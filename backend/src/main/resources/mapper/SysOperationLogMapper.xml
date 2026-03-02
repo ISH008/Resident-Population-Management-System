@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.population.resident.mapper.SysOperationLogMapper">
+
+    <sql id="baseWhere">
+        FROM sys_operation_log
+        WHERE 1 = 1
+        <if test="module != null and module != ''">
+            AND module = #{module}
+        </if>
+        <if test="result != null and result != ''">
+            AND result = #{result}
+        </if>
+    </sql>
+
+    <insert id="insert" parameterType="com.population.resident.domain.SysOperationLog" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO sys_operation_log (
+            operator_id,
+            operator_username,
+            module,
+            action,
+            target_id,
+            request_method,
+            request_path,
+            result,
+            message
+        ) VALUES (
+            #{operatorId},
+            #{operatorUsername},
+            #{module},
+            #{action},
+            #{targetId},
+            #{requestMethod},
+            #{requestPath},
+            #{result},
+            #{message}
+        )
+    </insert>
+
+    <select id="pageQuery" resultType="com.population.resident.domain.SysOperationLog">
+        SELECT
+            id,
+            operator_id,
+            operator_username,
+            module,
+            action,
+            target_id,
+            request_method,
+            request_path,
+            result,
+            message,
+            created_at
+        <include refid="baseWhere"/>
+        ORDER BY id DESC
+        LIMIT #{pageSize} OFFSET #{offset}
+    </select>
+
+    <select id="count" resultType="long">
+        SELECT COUNT(1)
+        <include refid="baseWhere"/>
+    </select>
+</mapper>

@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.population.resident.mapper.ResidentJudgeRuleMapper">
+
+    <select id="findEnabledRules" resultType="com.population.resident.domain.ResidentJudgeRule">
+        SELECT
+            id,
+            rule_code,
+            rule_name,
+            weight,
+            threshold_value,
+            enabled,
+            sort_order,
+            version,
+            description
+        FROM resident_judge_rule
+        WHERE enabled = 1
+          AND version = #{version}
+        ORDER BY sort_order ASC, id ASC
+    </select>
+</mapper>
