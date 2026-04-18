@@ -10,6 +10,7 @@ const authStore = useAuthStore();
 const menus = computed(() => {
   const base = [{ path: "/residents", title: "常住人口" }];
   if (authStore.roles.includes("ADMIN")) {
+    base.unshift({ path: "/dashboard", title: "数据看板" });
     base.push({ path: "/users", title: "用户管理" });
     base.push({ path: "/audit-logs", title: "操作审计" });
   }

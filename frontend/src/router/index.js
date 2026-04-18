@@ -5,6 +5,7 @@ import MainLayout from "../views/MainLayout.vue";
 import ResidentsPage from "../views/ResidentsPage.vue";
 import UsersPage from "../views/UsersPage.vue";
 import AuditLogsPage from "../views/AuditLogsPage.vue";
+import DashboardPage from "../views/DashboardPage.vue";
 
 const routes = [
   {
@@ -26,6 +27,12 @@ const routes = [
         name: "residents",
         component: ResidentsPage,
         meta: { roles: ["ADMIN", "USER"] }
+      },
+      {
+        path: "/dashboard",
+        name: "dashboard",
+        component: DashboardPage,
+        meta: { roles: ["ADMIN"] }
       },
       {
         path: "/users",
