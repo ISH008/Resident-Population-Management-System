@@ -10,6 +10,7 @@ import com.population.resident.dto.JudgeApplicationCreateRequest;
 import com.population.resident.dto.JudgeApplicationRejectRequest;
 import com.population.resident.dto.PageResponse;
 import com.population.resident.security.Authz;
+import com.population.resident.service.ResidentJudgeApplicationAttachmentService;
 import com.population.resident.service.ResidentJudgeApplicationService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -44,6 +45,7 @@ import java.util.List;
 public class ResidentJudgeApplicationController {
 
     private final ResidentJudgeApplicationService residentJudgeApplicationService;
+    private final ResidentJudgeApplicationAttachmentService residentJudgeApplicationAttachmentService;
 
     @Operation(summary = "提交判定申请")
     @AuditLog(module = "RESIDENT_JUDGE_APPLY", action = "提交判定申请")
@@ -107,22 +109,22 @@ public class ResidentJudgeApplicationController {
     public ApiResponse<Long> uploadAttachment(@PathVariable("id") Long id,
                                               @RequestPart("file") MultipartFile file) {
         Authz.requireAnyRole("ADMIN", "USER");
-        return ApiResponse.success(residentJudgeApplicationService.uploadAttachment(id, file));
+        return ApiResponse.success(residentJudgeApplicationAttachmentService.uploadAttachment(id, file));
     }
 
     @Operation(summary = "查询申请附件")
     @GetMapping("/{id}/attachments")
     public ApiResponse<List<JudgeApplicationAttachmentItem>> listAttachments(@PathVariable("id") Long id) {
         Authz.requireAnyRole("ADMIN", "USER");
-        return ApiResponse.success(residentJudgeApplicationService.listAttachments(id));
+        return ApiResponse.success(residentJudgeApplicationAttachmentService.listAttachments(id));
     }
 
     @Operation(summary = "下载申请附件")
     @GetMapping("/attachments/{attachmentId}/download")
     public ResponseEntity<InputStreamResource> downloadAttachment(@PathVariable Long attachmentId) throws IOException {
         Authz.requireAnyRole("ADMIN", "USER");
-        ResidentJudgeApplicationAttachment detail = residentJudgeApplicationService.attachmentDetail(attachmentId);
-        File file = residentJudgeApplicationService.downloadAttachment(attachmentId);
+        ResidentJudgeApplicationAttachment detail = residentJudgeApplicationAttachmentService.attachmentDetail(attachmentId);
+        File file = residentJudgeApplicationAttachmentService.downloadAttachment(attachmentId);
         String encodedName = URLEncoder.encode(detail.getOriginalName(), StandardCharsets.UTF_8).replaceAll("\\+", "%20");
         return ResponseEntity.ok()
                 .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename*=UTF-8''" + encodedName)

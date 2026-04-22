@@ -3,9 +3,7 @@ package com.population.resident.service;
 import com.population.resident.common.ErrorCode;
 import com.population.resident.domain.Resident;
 import com.population.resident.domain.ResidentJudgeApplication;
-import com.population.resident.domain.ResidentJudgeApplicationAttachment;
 import com.population.resident.domain.SysUser;
-import com.population.resident.dto.JudgeApplicationAttachmentItem;
 import com.population.resident.dto.JudgeApplicationApproveRequest;
 import com.population.resident.dto.JudgeApplicationCreateRequest;
 import com.population.resident.dto.JudgeApplicationRejectRequest;
@@ -15,42 +13,31 @@ import com.population.resident.dto.PageResponse;
 import com.population.resident.exception.BizException;
 import com.population.resident.mapper.ResidentJudgeApplicationMapper;
 import com.population.resident.mapper.ResidentMapper;
-import com.population.resident.mapper.ResidentJudgeApplicationAttachmentMapper;
 import com.population.resident.mapper.SysUserMapper;
 import com.population.resident.security.CurrentUser;
-import com.population.resident.security.UserContext;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.multipart.MultipartFile;
 import org.springframework.util.StringUtils;
 
-import java.io.File;
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.nio.file.StandardCopyOption;
 import java.util.List;
 import java.util.Locale;
-import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
 public class ResidentJudgeApplicationService {
 
     private final ResidentJudgeApplicationMapper residentJudgeApplicationMapper;
-    private final ResidentJudgeApplicationAttachmentMapper residentJudgeApplicationAttachmentMapper;
     private final ResidentMapper residentMapper;
     private final SysUserMapper sysUserMapper;
     private final ResidentService residentService;
-    private static final long MAX_ATTACHMENT_SIZE = 20L * 1024 * 1024;
+    private final JudgeApplicationPermissionService permissionService;
 
     @Transactional(rollbackFor = Exception.class)
     public Long create(JudgeApplicationCreateRequest request) {
-        CurrentUser currentUser = requireCurrentUser();
+        CurrentUser currentUser = permissionService.requireCurrentUser();
         Long targetResidentId = request.getResidentId();
-        if ("USER".equalsIgnoreCase(currentUser.getCurrentRole())) {
+        if (permissionService.isUserRole(currentUser)) {
             SysUser currentDbUser = sysUserMapper.findById(currentUser.getUserId());
             if (currentDbUser == null || currentDbUser.getResidentId() == null) {
                 throw new BizException(ErrorCode.BAD_REQUEST.getCode(), "当前账号未绑定居民档案，请联系管理员");
@@ -85,10 +72,10 @@ public class ResidentJudgeApplicationService {
         int validPageNum = pageNum == null || pageNum < 1 ? 1 : pageNum;
         int validPageSize = pageSize == null || pageSize < 1 ? 10 : Math.min(pageSize, 100);
         int offset = (validPageNum - 1) * validPageSize;
-        CurrentUser currentUser = requireCurrentUser();
+        CurrentUser currentUser = permissionService.requireCurrentUser();
         Long applicantId = currentUser.getUserId();
         Long residentId = null;
-        if ("USER".equalsIgnoreCase(currentUser.getCurrentRole())) {
+        if (permissionService.isUserRole(currentUser)) {
             SysUser currentDbUser = sysUserMapper.findById(currentUser.getUserId());
             if (currentDbUser == null || currentDbUser.getResidentId() == null) {
                 return PageResponse.<ResidentJudgeApplication>builder()
@@ -151,7 +138,7 @@ public class ResidentJudgeApplicationService {
         if (!"PENDING".equals(application.getStatus())) {
             throw new BizException(ErrorCode.CONFLICT.getCode(), "申请已处理");
         }
-        CurrentUser reviewer = requireCurrentUser();
+        CurrentUser reviewer = permissionService.requireCurrentUser();
         String approveMode = request.getApproveMode().toUpperCase(Locale.ROOT);
         String reviewComment = request.getReviewComment();
 
@@ -202,7 +189,7 @@ public class ResidentJudgeApplicationService {
         if (!"PENDING".equals(application.getStatus())) {
             throw new BizException(ErrorCode.CONFLICT.getCode(), "申请已处理");
         }
-        CurrentUser reviewer = requireCurrentUser();
+        CurrentUser reviewer = permissionService.requireCurrentUser();
         int updated = residentJudgeApplicationMapper.updateReviewed(
                 id,
                 "REJECTED",
@@ -212,80 +199,6 @@ public class ResidentJudgeApplicationService {
         if (updated == 0) {
             throw new BizException(ErrorCode.CONFLICT.getCode(), "申请已被处理");
         }
-    }
-
-    @Transactional(rollbackFor = Exception.class)
-    public Long uploadAttachment(Long applicationId, MultipartFile file) {
-        if (file == null || file.isEmpty()) {
-            throw new BizException(ErrorCode.BAD_REQUEST.getCode(), "附件不能为空");
-        }
-        if (file.getSize() > MAX_ATTACHMENT_SIZE) {
-            throw new BizException(ErrorCode.BAD_REQUEST.getCode(), "附件大小不能超过20MB");
-        }
-        ResidentJudgeApplication application = requireApplicationAndPermission(applicationId, true);
-        CurrentUser currentUser = requireCurrentUser();
-
-        String originalName = StringUtils.hasText(file.getOriginalFilename()) ? file.getOriginalFilename() : "unnamed";
-        String ext = "";
-        int dotIdx = originalName.lastIndexOf('.');
-        if (dotIdx >= 0 && dotIdx < originalName.length() - 1) {
-            ext = "." + originalName.substring(dotIdx + 1);
-        }
-        String safeFileName = UUID.randomUUID() + ext;
-        String dateDir = java.time.LocalDate.now().toString().replace("-", "");
-        Path baseDir = Paths.get(System.getProperty("user.dir"), "uploads", "judge-applications", dateDir);
-        try {
-            Files.createDirectories(baseDir);
-            Path target = baseDir.resolve(safeFileName).toAbsolutePath().normalize();
-            Files.copy(file.getInputStream(), target, StandardCopyOption.REPLACE_EXISTING);
-
-            ResidentJudgeApplicationAttachment attachment = new ResidentJudgeApplicationAttachment();
-            attachment.setApplicationId(application.getId());
-            attachment.setOriginalName(originalName);
-            attachment.setContentType(file.getContentType());
-            attachment.setFileSize(file.getSize());
-            attachment.setStoragePath(target.toString());
-            attachment.setUploaderId(currentUser.getUserId());
-            residentJudgeApplicationAttachmentMapper.insert(attachment);
-            return attachment.getId();
-        } catch (IOException ex) {
-            throw new BizException(ErrorCode.INTERNAL_ERROR.getCode(), "附件保存失败");
-        }
-    }
-
-    public List<JudgeApplicationAttachmentItem> listAttachments(Long applicationId) {
-        ResidentJudgeApplication application = requireApplicationAndPermission(applicationId, false);
-        return residentJudgeApplicationAttachmentMapper.findByApplicationId(application.getId()).stream()
-                .map(item -> JudgeApplicationAttachmentItem.builder()
-                        .id(item.getId())
-                        .originalName(item.getOriginalName())
-                        .contentType(item.getContentType())
-                        .fileSize(item.getFileSize())
-                        .createdAt(item.getCreatedAt())
-                        .build())
-                .toList();
-    }
-
-    public File downloadAttachment(Long attachmentId) {
-        ResidentJudgeApplicationAttachment attachment = residentJudgeApplicationAttachmentMapper.findById(attachmentId);
-        if (attachment == null) {
-            throw new BizException(ErrorCode.NOT_FOUND);
-        }
-        requireApplicationAndPermission(attachment.getApplicationId(), false);
-        File file = new File(attachment.getStoragePath());
-        if (!file.exists() || !file.isFile()) {
-            throw new BizException(ErrorCode.NOT_FOUND.getCode(), "附件文件不存在");
-        }
-        return file;
-    }
-
-    public ResidentJudgeApplicationAttachment attachmentDetail(Long attachmentId) {
-        ResidentJudgeApplicationAttachment attachment = residentJudgeApplicationAttachmentMapper.findById(attachmentId);
-        if (attachment == null) {
-            throw new BizException(ErrorCode.NOT_FOUND);
-        }
-        requireApplicationAndPermission(attachment.getApplicationId(), false);
-        return attachment;
     }
 
     private Integer boolToInt(Boolean value) {
@@ -311,29 +224,5 @@ public class ResidentJudgeApplicationService {
             return requestVersion;
         }
         return normalizeVersion(applicationVersion);
-    }
-
-    private CurrentUser requireCurrentUser() {
-        CurrentUser currentUser = UserContext.get();
-        if (currentUser == null) {
-            throw new BizException(ErrorCode.UNAUTHORIZED);
-        }
-        return currentUser;
-    }
-
-    private ResidentJudgeApplication requireApplicationAndPermission(Long applicationId, boolean requirePending) {
-        ResidentJudgeApplication application = residentJudgeApplicationMapper.findById(applicationId);
-        if (application == null) {
-            throw new BizException(ErrorCode.NOT_FOUND);
-        }
-        CurrentUser currentUser = requireCurrentUser();
-        if ("USER".equalsIgnoreCase(currentUser.getCurrentRole())
-                && !currentUser.getUserId().equals(application.getApplicantId())) {
-            throw new BizException(ErrorCode.UNAUTHORIZED.getCode(), "无权访问该申请");
-        }
-        if (requirePending && !"PENDING".equals(application.getStatus())) {
-            throw new BizException(ErrorCode.CONFLICT.getCode(), "仅待处理申请可上传附件");
-        }
-        return application;
     }
 }

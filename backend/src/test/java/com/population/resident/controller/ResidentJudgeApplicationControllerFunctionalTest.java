@@ -7,6 +7,7 @@ import com.population.resident.dto.PageResponse;
 import com.population.resident.exception.GlobalExceptionHandler;
 import com.population.resident.security.CurrentUser;
 import com.population.resident.security.UserContext;
+import com.population.resident.service.ResidentJudgeApplicationAttachmentService;
 import com.population.resident.service.ResidentJudgeApplicationService;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -36,12 +37,14 @@ class ResidentJudgeApplicationControllerFunctionalTest {
 
     private MockMvc mockMvc;
     private ResidentJudgeApplicationService service;
+    private ResidentJudgeApplicationAttachmentService attachmentService;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     @BeforeEach
     void setUp() {
         service = Mockito.mock(ResidentJudgeApplicationService.class);
-        ResidentJudgeApplicationController controller = new ResidentJudgeApplicationController(service);
+        attachmentService = Mockito.mock(ResidentJudgeApplicationAttachmentService.class);
+        ResidentJudgeApplicationController controller = new ResidentJudgeApplicationController(service, attachmentService);
         HandlerInterceptor roleInjector = new HandlerInterceptor() {
             @Override
             public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) {

@@ -5,16 +5,15 @@ import com.population.resident.domain.Resident;
 import com.population.resident.domain.ResidentJudgeApplication;
 import com.population.resident.dto.PageResponse;
 import com.population.resident.exception.BizException;
-import com.population.resident.mapper.ResidentJudgeApplicationAttachmentMapper;
 import com.population.resident.mapper.ResidentJudgeApplicationMapper;
 import com.population.resident.mapper.ResidentMapper;
 import com.population.resident.mapper.SysUserMapper;
 import com.population.resident.security.CurrentUser;
 import com.population.resident.security.UserContext;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -25,6 +24,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.verify;
@@ -36,16 +36,31 @@ class ResidentJudgeApplicationServiceTest {
     @Mock
     private ResidentJudgeApplicationMapper residentJudgeApplicationMapper;
     @Mock
-    private ResidentJudgeApplicationAttachmentMapper residentJudgeApplicationAttachmentMapper;
-    @Mock
     private ResidentMapper residentMapper;
     @Mock
     private SysUserMapper sysUserMapper;
     @Mock
     private ResidentService residentService;
+    @Mock
+    private JudgeApplicationPermissionService permissionService;
 
-    @InjectMocks
     private ResidentJudgeApplicationService service;
+
+    @BeforeEach
+    void setUp() {
+        service = new ResidentJudgeApplicationService(
+                residentJudgeApplicationMapper,
+                residentMapper,
+                sysUserMapper,
+                residentService,
+                permissionService
+        );
+        when(permissionService.requireCurrentUser()).thenAnswer(invocation -> UserContext.get());
+        when(permissionService.isUserRole(any())).thenAnswer(invocation -> {
+            CurrentUser currentUser = invocation.getArgument(0);
+            return currentUser != null && "USER".equalsIgnoreCase(currentUser.getCurrentRole());
+        });
+    }
 
     @AfterEach
     void clearContext() {
@@ -159,4 +174,3 @@ class ResidentJudgeApplicationServiceTest {
         assertEquals(100L, id);
     }
 }
-
