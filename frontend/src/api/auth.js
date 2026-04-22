@@ -14,3 +14,27 @@ export function meApi() {
     method: "get"
   });
 }
+
+export function registerApi(data) {
+  return request({
+    url: "/api/v1/auth/register",
+    method: "post",
+    data
+  });
+}
+
+export function changePasswordApi(data) {
+  return request({
+    url: "/api/v1/auth/change-password",
+    method: "post",
+    data
+  });
+}
+
+export function updateProfileApi(data) {
+  return request({
+    url: "/api/v1/auth/profile",
+    method: "post",
+    data
+  });
+}

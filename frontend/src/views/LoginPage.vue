@@ -1,20 +1,40 @@
 <script setup>
 import { reactive, ref } from "vue";
+import { ElMessage } from "element-plus";
 import { useRouter } from "vue-router";
+import { registerApi } from "../api/auth";
 import { useAuthStore } from "../stores/auth";
 
 const router = useRouter();
 const authStore = useAuthStore();
 const loading = ref(false);
+const registerLoading = ref(false);
 const formRef = ref(null);
+const registerRef = ref(null);
+const registerVisible = ref(false);
 const form = reactive({
   username: "admin",
   password: "123456"
+});
+const registerForm = reactive({
+  username: "",
+  password: "",
+  realName: "",
+  phone: ""
 });
 
 const rules = {
   username: [{ required: true, message: "请输入用户名", trigger: "blur" }],
   password: [{ required: true, message: "请输入密码", trigger: "blur" }]
+};
+const registerRules = {
+  username: [
+    { required: true, message: "请输入用户名", trigger: "blur" },
+    { min: 4, max: 32, message: "长度4-32个字符", trigger: "blur" },
+    { pattern: /^[\u4e00-\u9fa5a-zA-Z0-9_]+$/, message: "仅支持中文/字母/数字/下划线", trigger: "blur" }
+  ],
+  password: [{ required: true, message: "请输入密码", trigger: "blur" }, { min: 6, message: "至少6位", trigger: "blur" }],
+  phone: [{ pattern: /^$|^1\d{10}$/, message: "手机号格式错误", trigger: "blur" }]
 };
 
 const handleLogin = async () => {
@@ -22,9 +42,36 @@ const handleLogin = async () => {
   loading.value = true;
   try {
     await authStore.login(form);
-    router.replace("/residents");
+    const role = authStore.userInfo?.currentRole;
+    if (role === "USER") {
+      router.replace("/judge-applications");
+    } else {
+      router.replace("/dashboard");
+    }
   } finally {
     loading.value = false;
+  }
+};
+
+const openRegister = () => {
+  registerForm.username = "";
+  registerForm.password = "";
+  registerForm.realName = "";
+  registerForm.phone = "";
+  registerVisible.value = true;
+};
+
+const handleRegister = async () => {
+  await registerRef.value.validate();
+  registerLoading.value = true;
+  try {
+    await registerApi(registerForm);
+    ElMessage.success("注册成功，请登录");
+    registerVisible.value = false;
+    form.username = registerForm.username;
+    form.password = "";
+  } finally {
+    registerLoading.value = false;
   }
 };
 </script>
@@ -46,9 +93,31 @@ const handleLogin = async () => {
         <el-button type="primary" :loading="loading" class="submit-btn" @click="handleLogin">
           登录
         </el-button>
+        <el-button link class="register-btn" @click="openRegister">新用户注册</el-button>
       </el-form>
     </el-card>
   </div>
+
+  <el-dialog v-model="registerVisible" title="用户注册" width="460px">
+    <el-form ref="registerRef" :model="registerForm" :rules="registerRules" label-width="90px">
+      <el-form-item label="用户名" prop="username">
+        <el-input v-model="registerForm.username" />
+      </el-form-item>
+      <el-form-item label="密码" prop="password">
+        <el-input v-model="registerForm.password" type="password" show-password />
+      </el-form-item>
+      <el-form-item label="姓名">
+        <el-input v-model="registerForm.realName" />
+      </el-form-item>
+      <el-form-item label="手机号" prop="phone">
+        <el-input v-model="registerForm.phone" />
+      </el-form-item>
+    </el-form>
+    <template #footer>
+      <el-button @click="registerVisible = false">取消</el-button>
+      <el-button type="primary" :loading="registerLoading" @click="handleRegister">注册</el-button>
+    </template>
+  </el-dialog>
 </template>
 
 <style scoped>
@@ -99,5 +168,9 @@ p {
 
 .submit-btn {
   width: 100%;
+}
+
+.register-btn {
+  margin-top: 8px;
 }
 </style>

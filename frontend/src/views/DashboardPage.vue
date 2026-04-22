@@ -59,6 +59,13 @@ const refresh = async () => {
 
 const todayStr = computed(() => formatDay(new Date()));
 
+const isJudgeActionLog = (item) => {
+  if (item.module === "RESIDENT_JUDGE") {
+    return true;
+  }
+  return item.module === "RESIDENT_JUDGE_APPLY" && item.action === "审批通过判定申请";
+};
+
 const kpi = computed(() => {
   const totalResidents = residents.value.length;
   const residentCount = residents.value.filter((item) => item.residenceStatus === "RESIDENT").length;
@@ -66,7 +73,7 @@ const kpi = computed(() => {
   const nonResidentCount = residents.value.filter((item) => item.residenceStatus === "NON_RESIDENT").length;
   const todayJudgeCount = auditLogs.value.filter((item) => {
     const day = parseDate(item.createdAt);
-    return day && formatDay(day) === todayStr.value && item.module === "RESIDENT_JUDGE" && item.result === "SUCCESS";
+    return day && formatDay(day) === todayStr.value && item.result === "SUCCESS" && isJudgeActionLog(item);
   }).length;
   const todayFailCount = auditLogs.value.filter((item) => {
     const day = parseDate(item.createdAt);
@@ -126,7 +133,7 @@ const trendRows = computed(() => {
       return;
     }
     const key = formatDay(created);
-    if (indexByDay.has(key) && item.module === "RESIDENT_JUDGE") {
+    if (indexByDay.has(key) && isJudgeActionLog(item)) {
       indexByDay.get(key).judgeActions += 1;
     }
   });

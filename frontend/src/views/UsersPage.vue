@@ -2,12 +2,15 @@
 import { onMounted, reactive, ref } from "vue";
 import { ElMessage, ElMessageBox } from "element-plus";
 import { createUserApi, deleteUserApi, rolesApi, updateUserApi, usersPageApi } from "../api/users";
+import { residentsPageApi } from "../api/residents";
 
 const loading = ref(false);
 const submitLoading = ref(false);
 const tableData = ref([]);
 const total = ref(0);
 const roles = ref([]);
+const residentOptions = ref([]);
+const residentLoading = ref(false);
 const dialogVisible = ref(false);
 const isEdit = ref(false);
 const formRef = ref(null);
@@ -24,6 +27,7 @@ const form = reactive({
   password: "",
   realName: "",
   phone: "",
+  residentId: null,
   status: 1,
   roleIds: []
 });
@@ -32,7 +36,7 @@ const rules = {
   username: [
     { required: true, message: "请输入用户名", trigger: "blur" },
     { min: 4, max: 32, message: "长度4-32个字符", trigger: "blur" },
-    { pattern: /^[a-zA-Z0-9_]+$/, message: "仅支持字母/数字/下划线", trigger: "blur" }
+    { pattern: /^[\u4e00-\u9fa5a-zA-Z0-9_]+$/, message: "仅支持中文/字母/数字/下划线", trigger: "blur" }
   ],
   password: [
     {
@@ -61,6 +65,20 @@ const fetchRoles = async () => {
   roles.value = data;
 };
 
+const fetchResidents = async (name = "") => {
+  residentLoading.value = true;
+  try {
+    const { data } = await residentsPageApi({
+      pageNum: 1,
+      pageSize: 50,
+      name
+    });
+    residentOptions.value = data.records || [];
+  } finally {
+    residentLoading.value = false;
+  }
+};
+
 const fetchData = async () => {
   loading.value = true;
   try {
@@ -78,6 +96,7 @@ const resetForm = () => {
   form.password = "";
   form.realName = "";
   form.phone = "";
+  form.residentId = null;
   form.status = 1;
   form.roleIds = [];
 };
@@ -95,6 +114,7 @@ const openEdit = (row) => {
   form.password = "";
   form.realName = row.realName || "";
   form.phone = row.phone || "";
+  form.residentId = row.residentId || null;
   form.status = row.status ?? 1;
   form.roleIds = roles.value.filter((r) => (row.roles || []).includes(r.roleCode)).map((r) => r.id);
   dialogVisible.value = true;
@@ -109,6 +129,7 @@ const submit = async () => {
         password: form.password || undefined,
         realName: form.realName,
         phone: form.phone,
+        residentId: form.residentId,
         status: form.status,
         roleIds: form.roleIds
       };
@@ -120,6 +141,7 @@ const submit = async () => {
         password: form.password,
         realName: form.realName,
         phone: form.phone,
+        residentId: form.residentId,
         status: form.status,
         roleIds: form.roleIds
       });
@@ -140,7 +162,7 @@ const handleDelete = async (row) => {
 };
 
 onMounted(async () => {
-  await fetchRoles();
+  await Promise.all([fetchRoles(), fetchResidents()]);
   await fetchData();
 });
 </script>
@@ -167,6 +189,12 @@ onMounted(async () => {
       <el-table-column prop="username" label="用户名" />
       <el-table-column prop="realName" label="姓名" />
       <el-table-column prop="phone" label="手机号" />
+      <el-table-column label="绑定居民" min-width="160">
+        <template #default="{ row }">
+          <span v-if="row.residentId">{{ row.residentName || "-" }}（ID:{{ row.residentId }}）</span>
+          <span v-else>-</span>
+        </template>
+      </el-table-column>
       <el-table-column label="状态" width="90">
         <template #default="{ row }">
           <el-tag :type="row.status === 1 ? 'success' : 'info'">{{ row.status === 1 ? "启用" : "禁用" }}</el-tag>
@@ -218,6 +246,26 @@ onMounted(async () => {
       </el-form-item>
       <el-form-item label="手机号" prop="phone">
         <el-input v-model="form.phone" />
+      </el-form-item>
+      <el-form-item label="绑定居民">
+        <el-select
+          v-model="form.residentId"
+          clearable
+          filterable
+          remote
+          reserve-keyword
+          :remote-method="fetchResidents"
+          :loading="residentLoading"
+          placeholder="输入姓名搜索"
+          style="width: 100%"
+        >
+          <el-option
+            v-for="item in residentOptions"
+            :key="item.id"
+            :label="`${item.name}（ID:${item.id}）`"
+            :value="item.id"
+          />
+        </el-select>
       </el-form-item>
       <el-form-item label="状态">
         <el-radio-group v-model="form.status">

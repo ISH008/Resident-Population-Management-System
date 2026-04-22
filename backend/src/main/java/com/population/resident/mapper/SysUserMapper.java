@@ -10,6 +10,8 @@ import java.util.List;
 public interface SysUserMapper {
     SysUser findByUsername(@Param("username") String username);
 
+    SysUser findByResidentId(@Param("residentId") Long residentId);
+
     List<SysUser> pageQuery(@Param("offset") Integer offset,
                             @Param("pageSize") Integer pageSize,
                             @Param("username") String username,
@@ -25,6 +27,13 @@ public interface SysUserMapper {
     int insert(SysUser user);
 
     int updateById(SysUser user);
+
+    int updateProfile(@Param("id") Long id,
+                      @Param("username") String username,
+                      @Param("realName") String realName,
+                      @Param("phone") String phone);
+
+    int updatePassword(@Param("id") Long id, @Param("password") String password);
 
     int logicalDelete(@Param("id") Long id);
 }

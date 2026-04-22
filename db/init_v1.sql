@@ -21,11 +21,13 @@ CREATE TABLE sys_user (
   password VARCHAR(255) NOT NULL COMMENT 'BCrypt encrypted password',
   real_name VARCHAR(64) NULL,
   phone VARCHAR(20) NULL,
+  resident_id BIGINT NULL COMMENT '绑定居民档案ID',
   status TINYINT NOT NULL DEFAULT 1 COMMENT '1-enabled,0-disabled',
   is_deleted TINYINT NOT NULL DEFAULT 0,
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   UNIQUE KEY uk_sys_user_username (username),
+  UNIQUE KEY uk_sys_user_resident_id (resident_id),
   KEY idx_sys_user_phone (phone),
   KEY idx_sys_user_status (status)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='System users';
@@ -56,6 +58,8 @@ CREATE TABLE sys_user_role (
 -- =============================
 DROP TABLE IF EXISTS resident_judge_log;
 DROP TABLE IF EXISTS resident_judge_rule;
+DROP TABLE IF EXISTS resident_judge_application_attachment;
+DROP TABLE IF EXISTS resident_judge_application;
 DROP TABLE IF EXISTS resident;
 DROP TABLE IF EXISTS sys_operation_log;
 
@@ -130,6 +134,48 @@ CREATE TABLE resident_judge_log (
   KEY idx_rjl_final_status (final_status),
   CONSTRAINT fk_rjl_resident_id FOREIGN KEY (resident_id) REFERENCES resident(id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='Residence judgement logs';
+
+ALTER TABLE sys_user
+ADD CONSTRAINT fk_sys_user_resident_id FOREIGN KEY (resident_id) REFERENCES resident(id);
+
+CREATE TABLE resident_judge_application (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  resident_id BIGINT NOT NULL,
+  applicant_id BIGINT NOT NULL,
+  apply_reason VARCHAR(500) NOT NULL,
+  evidence_text VARCHAR(1000) NULL,
+  local_employ_social TINYINT NULL COMMENT '1-yes,0-no,null-unknown',
+  local_activity_90d TINYINT NULL COMMENT '1-yes,0-no,null-unknown',
+  judge_version VARCHAR(32) NOT NULL DEFAULT 'v1',
+  status VARCHAR(32) NOT NULL DEFAULT 'PENDING' COMMENT 'PENDING/APPROVED/REJECTED',
+  review_comment VARCHAR(500) NULL,
+  reviewer_id BIGINT NULL,
+  reviewed_at DATETIME NULL,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  KEY idx_rja_resident_id (resident_id),
+  KEY idx_rja_applicant_id (applicant_id),
+  KEY idx_rja_status (status),
+  KEY idx_rja_created_at (created_at),
+  CONSTRAINT fk_rja_resident_id FOREIGN KEY (resident_id) REFERENCES resident(id),
+  CONSTRAINT fk_rja_applicant_id FOREIGN KEY (applicant_id) REFERENCES sys_user(id),
+  CONSTRAINT fk_rja_reviewer_id FOREIGN KEY (reviewer_id) REFERENCES sys_user(id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='Resident judgement applications';
+
+CREATE TABLE resident_judge_application_attachment (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  application_id BIGINT NOT NULL,
+  original_name VARCHAR(255) NOT NULL,
+  content_type VARCHAR(128) NULL,
+  file_size BIGINT NOT NULL,
+  storage_path VARCHAR(500) NOT NULL,
+  uploader_id BIGINT NULL,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  KEY idx_rjaa_application_id (application_id),
+  KEY idx_rjaa_created_at (created_at),
+  CONSTRAINT fk_rjaa_application_id FOREIGN KEY (application_id) REFERENCES resident_judge_application(id),
+  CONSTRAINT fk_rjaa_uploader_id FOREIGN KEY (uploader_id) REFERENCES sys_user(id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='Judge application attachments';
 
 CREATE TABLE sys_operation_log (
   id BIGINT PRIMARY KEY AUTO_INCREMENT,

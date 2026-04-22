@@ -1,0 +1,130 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.population.resident.mapper.ResidentJudgeApplicationMapper">
+
+    <sql id="baseSelect">
+        SELECT
+            a.id,
+            a.resident_id,
+            r.name AS resident_name,
+            r.id_card AS resident_id_card,
+            a.applicant_id,
+            au.username AS applicant_username,
+            a.apply_reason,
+            a.evidence_text,
+            a.local_employ_social,
+            a.local_activity_90d,
+            a.judge_version,
+            a.status,
+            a.review_comment,
+            a.reviewer_id,
+            ru.username AS reviewer_username,
+            (SELECT COUNT(1)
+             FROM resident_judge_application_attachment aa
+             WHERE aa.application_id = a.id) AS attachment_count,
+            a.reviewed_at,
+            a.created_at
+        FROM resident_judge_application a
+        LEFT JOIN resident r ON r.id = a.resident_id
+        LEFT JOIN sys_user au ON au.id = a.applicant_id
+        LEFT JOIN sys_user ru ON ru.id = a.reviewer_id
+    </sql>
+
+    <select id="pageMine" resultType="com.population.resident.domain.ResidentJudgeApplication">
+        <include refid="baseSelect"/>
+        WHERE a.applicant_id = #{applicantId}
+        <if test="residentId != null">
+            AND a.resident_id = #{residentId}
+        </if>
+        <if test="status != null and status != ''">
+            AND a.status = #{status}
+        </if>
+        ORDER BY a.id DESC
+        LIMIT #{pageSize} OFFSET #{offset}
+    </select>
+
+    <select id="countMine" resultType="long">
+        SELECT COUNT(1)
+        FROM resident_judge_application a
+        WHERE a.applicant_id = #{applicantId}
+        <if test="residentId != null">
+            AND a.resident_id = #{residentId}
+        </if>
+        <if test="status != null and status != ''">
+            AND a.status = #{status}
+        </if>
+    </select>
+
+    <select id="pageAdmin" resultType="com.population.resident.domain.ResidentJudgeApplication">
+        <include refid="baseSelect"/>
+        WHERE 1 = 1
+        <if test="status != null and status != ''">
+            AND a.status = #{status}
+        </if>
+        <if test="residentName != null and residentName != ''">
+            AND r.name LIKE CONCAT('%', #{residentName}, '%')
+        </if>
+        <if test="applicantUsername != null and applicantUsername != ''">
+            AND au.username LIKE CONCAT('%', #{applicantUsername}, '%')
+        </if>
+        ORDER BY a.id DESC
+        LIMIT #{pageSize} OFFSET #{offset}
+    </select>
+
+    <select id="countAdmin" resultType="long">
+        SELECT COUNT(1)
+        FROM resident_judge_application a
+        LEFT JOIN resident r ON r.id = a.resident_id
+        LEFT JOIN sys_user au ON au.id = a.applicant_id
+        WHERE 1 = 1
+        <if test="status != null and status != ''">
+            AND a.status = #{status}
+        </if>
+        <if test="residentName != null and residentName != ''">
+            AND r.name LIKE CONCAT('%', #{residentName}, '%')
+        </if>
+        <if test="applicantUsername != null and applicantUsername != ''">
+            AND au.username LIKE CONCAT('%', #{applicantUsername}, '%')
+        </if>
+    </select>
+
+    <select id="findById" resultType="com.population.resident.domain.ResidentJudgeApplication">
+        <include refid="baseSelect"/>
+        WHERE a.id = #{id}
+        LIMIT 1
+    </select>
+
+    <insert id="insert" parameterType="com.population.resident.domain.ResidentJudgeApplication" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO resident_judge_application (
+            resident_id,
+            applicant_id,
+            apply_reason,
+            evidence_text,
+            local_employ_social,
+            local_activity_90d,
+            judge_version,
+            status
+        ) VALUES (
+            #{residentId},
+            #{applicantId},
+            #{applyReason},
+            #{evidenceText},
+            #{localEmploySocial},
+            #{localActivity90d},
+            #{judgeVersion},
+            #{status}
+        )
+    </insert>
+
+    <update id="updateReviewed">
+        UPDATE resident_judge_application
+        SET status = #{status},
+            review_comment = #{reviewComment},
+            reviewer_id = #{reviewerId},
+            reviewed_at = NOW()
+        WHERE id = #{id}
+          AND status = 'PENDING'
+    </update>
+</mapper>

@@ -4,8 +4,6 @@ import com.population.resident.common.ErrorCode;
 import com.population.resident.exception.BizException;
 
 import java.util.Arrays;
-import java.util.Set;
-import java.util.stream.Collectors;
 
 public final class Authz {
 
@@ -17,8 +15,13 @@ public final class Authz {
         if (currentUser == null) {
             throw new BizException(ErrorCode.UNAUTHORIZED);
         }
-        Set<String> owned = currentUser.getRoles().stream().map(String::toUpperCase).collect(Collectors.toSet());
-        boolean matched = Arrays.stream(expectedRoles).map(String::toUpperCase).anyMatch(owned::contains);
+        String currentRole = currentUser.getCurrentRole();
+        if (currentRole == null) {
+            throw new BizException(ErrorCode.UNAUTHORIZED);
+        }
+        boolean matched = Arrays.stream(expectedRoles)
+                .map(String::toUpperCase)
+                .anyMatch(role -> role.equals(currentRole.toUpperCase()));
         if (!matched) {
             throw new BizException(ErrorCode.UNAUTHORIZED);
         }

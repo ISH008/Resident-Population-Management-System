@@ -20,34 +20,70 @@
 
     <select id="findByUsername" parameterType="string" resultType="com.population.resident.domain.SysUser">
         SELECT
-            id,
-            username,
-            password,
-            real_name,
-            phone,
-            status,
-            is_deleted,
-            created_at,
-            updated_at
-        FROM sys_user
-        WHERE username = #{username}
-          AND is_deleted = 0
+            u.id,
+            u.username,
+            u.password,
+            u.real_name,
+            u.phone,
+            u.resident_id,
+            r.name AS resident_name,
+            u.status,
+            u.is_deleted,
+            u.created_at,
+            u.updated_at
+        FROM sys_user u
+        LEFT JOIN resident r ON r.id = u.resident_id AND r.is_deleted = 0
+        WHERE u.username = #{username}
+          AND u.is_deleted = 0
+        LIMIT 1
+    </select>
+
+    <select id="findByResidentId" parameterType="long" resultType="com.population.resident.domain.SysUser">
+        SELECT
+            u.id,
+            u.username,
+            u.password,
+            u.real_name,
+            u.phone,
+            u.resident_id,
+            r.name AS resident_name,
+            u.status,
+            u.is_deleted,
+            u.created_at,
+            u.updated_at
+        FROM sys_user u
+        LEFT JOIN resident r ON r.id = u.resident_id AND r.is_deleted = 0
+        WHERE u.resident_id = #{residentId}
+          AND u.is_deleted = 0
         LIMIT 1
     </select>
 
     <select id="pageQuery" resultType="com.population.resident.domain.SysUser">
         SELECT
-            id,
-            username,
-            password,
-            real_name,
-            phone,
-            status,
-            is_deleted,
-            created_at,
-            updated_at
-        <include refid="baseWhere"/>
-        ORDER BY id DESC
+            u.id,
+            u.username,
+            u.password,
+            u.real_name,
+            u.phone,
+            u.resident_id,
+            r.name AS resident_name,
+            u.status,
+            u.is_deleted,
+            u.created_at,
+            u.updated_at
+        FROM sys_user u
+        LEFT JOIN resident r ON r.id = u.resident_id AND r.is_deleted = 0
+        WHERE u.is_deleted = 0
+        <if test="username != null and username != ''">
+            AND u.username LIKE CONCAT('%', #{username}, '%')
+        </if>
+        <if test="realName != null and realName != ''">
+            AND u.real_name LIKE CONCAT('%', #{realName}, '%')
+        </if>
+        <if test="status != null">
+            AND u.status = #{status}
+        </if>
+        ORDER BY u.id DESC
         LIMIT #{pageSize} OFFSET #{offset}
     </select>
 
@@ -58,26 +94,29 @@
 
     <select id="findById" parameterType="long" resultType="com.population.resident.domain.SysUser">
         SELECT
-            id,
-            username,
-            password,
-            real_name,
-            phone,
-            status,
-            is_deleted,
-            created_at,
-            updated_at
-        FROM sys_user
-        WHERE id = #{id}
-          AND is_deleted = 0
+            u.id,
+            u.username,
+            u.password,
+            u.real_name,
+            u.phone,
+            u.resident_id,
+            r.name AS resident_name,
+            u.status,
+            u.is_deleted,
+            u.created_at,
+            u.updated_at
+        FROM sys_user u
+        LEFT JOIN resident r ON r.id = u.resident_id AND r.is_deleted = 0
+        WHERE u.id = #{id}
+          AND u.is_deleted = 0
         LIMIT 1
     </select>
 
     <insert id="insert" parameterType="com.population.resident.domain.SysUser" useGeneratedKeys="true" keyProperty="id">
         INSERT INTO sys_user (
-            username, password, real_name, phone, status, is_deleted
+            username, password, real_name, phone, resident_id, status, is_deleted
         ) VALUES (
-            #{username}, #{password}, #{realName}, #{phone}, #{status}, 0
+            #{username}, #{password}, #{realName}, #{phone}, #{residentId}, #{status}, 0
         )
     </insert>
 
@@ -85,6 +124,7 @@
         UPDATE sys_user
         SET real_name = #{realName},
             phone = #{phone},
+            resident_id = #{residentId},
             status = #{status}
         <if test="password != null and password != ''">
             , password = #{password}
@@ -96,6 +136,22 @@
     <update id="logicalDelete" parameterType="long">
         UPDATE sys_user
         SET is_deleted = 1
+        WHERE id = #{id}
+          AND is_deleted = 0
+    </update>
+
+    <update id="updatePassword">
+        UPDATE sys_user
+        SET password = #{password}
+        WHERE id = #{id}
+          AND is_deleted = 0
+    </update>
+
+    <update id="updateProfile">
+        UPDATE sys_user
+        SET username = #{username},
+            real_name = #{realName},
+            phone = #{phone}
         WHERE id = #{id}
           AND is_deleted = 0
     </update>

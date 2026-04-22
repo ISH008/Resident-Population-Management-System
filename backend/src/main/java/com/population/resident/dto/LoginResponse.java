@@ -17,6 +17,10 @@ public class LoginResponse {
     public static class UserInfo {
         private Long id;
         private String username;
+        private String realName;
+        private String phone;
+        private Long residentId;
+        private String residentName;
         private List<String> roles;
         private String currentRole;
     }

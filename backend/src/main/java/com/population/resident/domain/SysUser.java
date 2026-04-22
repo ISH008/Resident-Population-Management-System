@@ -11,6 +11,8 @@ public class SysUser {
     private String password;
     private String realName;
     private String phone;
+    private Long residentId;
+    private String residentName;
     private Integer status;
     private Integer isDeleted;
     private LocalDateTime createdAt;

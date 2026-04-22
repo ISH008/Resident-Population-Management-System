@@ -38,6 +38,7 @@ onMounted(fetchData);
           <el-option label="USER" value="USER" />
           <el-option label="RESIDENT" value="RESIDENT" />
           <el-option label="RESIDENT_JUDGE" value="RESIDENT_JUDGE" />
+          <el-option label="RESIDENT_JUDGE_APPLY" value="RESIDENT_JUDGE_APPLY" />
         </el-select>
       </el-form-item>
       <el-form-item label="结果">

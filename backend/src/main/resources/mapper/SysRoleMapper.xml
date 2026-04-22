@@ -33,4 +33,12 @@
         WHERE id = #{roleId}
           AND status = 1
     </select>
+
+    <select id="findByRoleCode" parameterType="string" resultType="com.population.resident.domain.SysRole">
+        SELECT id, role_code, role_name, status, created_at, updated_at
+        FROM sys_role
+        WHERE role_code = #{roleCode}
+          AND status = 1
+        LIMIT 1
+    </select>
 </mapper>

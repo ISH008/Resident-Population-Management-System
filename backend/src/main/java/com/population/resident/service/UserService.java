@@ -9,6 +9,7 @@ import com.population.resident.dto.UserPageItem;
 import com.population.resident.dto.UserUpdateRequest;
 import com.population.resident.exception.BizException;
 import com.population.resident.mapper.SysRoleMapper;
+import com.population.resident.mapper.ResidentMapper;
 import com.population.resident.mapper.SysUserMapper;
 import com.population.resident.mapper.SysUserRoleMapper;
 import lombok.RequiredArgsConstructor;
@@ -25,6 +26,7 @@ public class UserService {
 
     private final SysUserMapper sysUserMapper;
     private final SysRoleMapper sysRoleMapper;
+    private final ResidentMapper residentMapper;
     private final SysUserRoleMapper sysUserRoleMapper;
     private final BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
 
@@ -39,6 +41,8 @@ public class UserService {
                 .username(u.getUsername())
                 .realName(u.getRealName())
                 .phone(u.getPhone())
+                .residentId(u.getResidentId())
+                .residentName(u.getResidentName())
                 .status(u.getStatus())
                 .roles(sysRoleMapper.findRoleCodesByUserId(u.getId()))
                 .createdAt(u.getCreatedAt())
@@ -56,6 +60,7 @@ public class UserService {
     @Transactional(rollbackFor = Exception.class)
     public Long create(UserCreateRequest request) {
         validateRoles(request.getRoleIds());
+        validateResidentBinding(request.getResidentId(), null);
         SysUser exists = sysUserMapper.findByUsername(request.getUsername());
         if (exists != null) {
             throw new BizException(ErrorCode.CONFLICT.getCode(), "用户名已存在");
@@ -66,6 +71,7 @@ public class UserService {
         user.setPassword(passwordEncoder.encode(request.getPassword()));
         user.setRealName(request.getRealName());
         user.setPhone(request.getPhone());
+        user.setResidentId(request.getResidentId());
         user.setStatus(request.getStatus() == null ? 1 : request.getStatus());
         sysUserMapper.insert(user);
 
@@ -78,6 +84,7 @@ public class UserService {
     @Transactional(rollbackFor = Exception.class)
     public void update(Long id, UserUpdateRequest request) {
         validateRoles(request.getRoleIds());
+        validateResidentBinding(request.getResidentId(), id);
         SysUser user = sysUserMapper.findById(id);
         if (user == null) {
             throw new BizException(ErrorCode.NOT_FOUND);
@@ -86,6 +93,7 @@ public class UserService {
         user.setId(id);
         user.setRealName(request.getRealName());
         user.setPhone(request.getPhone());
+        user.setResidentId(request.getResidentId());
         user.setStatus(request.getStatus() == null ? user.getStatus() : request.getStatus());
         if (StringUtils.hasText(request.getPassword())) {
             user.setPassword(passwordEncoder.encode(request.getPassword()));
@@ -118,6 +126,19 @@ public class UserService {
             if (sysRoleMapper.countByRoleId(roleId) == 0) {
                 throw new BizException(ErrorCode.BAD_REQUEST.getCode(), "角色不存在: " + roleId);
             }
+        }
+    }
+
+    private void validateResidentBinding(Long residentId, Long currentUserId) {
+        if (residentId == null) {
+            return;
+        }
+        if (residentMapper.findById(residentId) == null) {
+            throw new BizException(ErrorCode.BAD_REQUEST.getCode(), "绑定居民不存在");
+        }
+        SysUser boundUser = sysUserMapper.findByResidentId(residentId);
+        if (boundUser != null && (currentUserId == null || !boundUser.getId().equals(currentUserId))) {
+            throw new BizException(ErrorCode.CONFLICT.getCode(), "该居民已绑定其他账号");
         }
     }
 }

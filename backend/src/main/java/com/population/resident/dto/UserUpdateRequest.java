@@ -14,6 +14,7 @@ public class UserUpdateRequest {
     private String realName;
     @Pattern(regexp = "^1\\d{10}$", message = "手机号格式错误")
     private String phone;
+    private Long residentId;
     private Integer status;
     @NotEmpty(message = "roleIds不能为空")
     private List<Long> roleIds;

@@ -6,6 +6,11 @@ import ResidentsPage from "../views/ResidentsPage.vue";
 import UsersPage from "../views/UsersPage.vue";
 import AuditLogsPage from "../views/AuditLogsPage.vue";
 import DashboardPage from "../views/DashboardPage.vue";
+import JudgeApplicationsPage from "../views/JudgeApplicationsPage.vue";
+import JudgeApplicationsReviewPage from "../views/JudgeApplicationsReviewPage.vue";
+import JudgeProgressPage from "../views/JudgeProgressPage.vue";
+import UserProfilePage from "../views/UserProfilePage.vue";
+import AboutPage from "../views/AboutPage.vue";
 
 const routes = [
   {
@@ -20,19 +25,49 @@ const routes = [
     children: [
       {
         path: "",
-        redirect: "/residents"
+        redirect: "/judge-applications"
       },
       {
         path: "/residents",
         name: "residents",
         component: ResidentsPage,
-        meta: { roles: ["ADMIN", "USER"] }
+        meta: { roles: ["ADMIN"] }
       },
       {
         path: "/dashboard",
         name: "dashboard",
         component: DashboardPage,
         meta: { roles: ["ADMIN"] }
+      },
+      {
+        path: "/judge-applications",
+        name: "judgeApplications",
+        component: JudgeApplicationsPage,
+        meta: { roles: ["USER"] }
+      },
+      {
+        path: "/judge-applications-review",
+        name: "judgeApplicationsReview",
+        component: JudgeApplicationsReviewPage,
+        meta: { roles: ["ADMIN"] }
+      },
+      {
+        path: "/judge-progress",
+        name: "judgeProgress",
+        component: JudgeProgressPage,
+        meta: { roles: ["USER"] }
+      },
+      {
+        path: "/profile",
+        name: "profile",
+        component: UserProfilePage,
+        meta: { roles: ["USER"] }
+      },
+      {
+        path: "/about",
+        name: "about",
+        component: AboutPage,
+        meta: { roles: ["USER"] }
       },
       {
         path: "/users",
@@ -75,9 +110,10 @@ router.beforeEach(async (to) => {
   if (!requiredRoles.length) {
     return true;
   }
-  const hasRole = requiredRoles.some((role) => authStore.roles.includes(role));
+  const currentRole = authStore.userInfo?.currentRole;
+  const hasRole = !!currentRole && requiredRoles.includes(currentRole);
   if (!hasRole) {
-    return "/residents";
+    return currentRole === "ADMIN" ? "/dashboard" : "/judge-applications";
   }
   return true;
 });

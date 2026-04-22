@@ -15,4 +15,6 @@ public interface SysRoleMapper {
     List<SysRole> findAllEnabled();
 
     int countByRoleId(@Param("roleId") Long roleId);
+
+    SysRole findByRoleCode(@Param("roleCode") String roleCode);
 }

@@ -13,6 +13,8 @@ public class UserPageItem {
     private String username;
     private String realName;
     private String phone;
+    private Long residentId;
+    private String residentName;
     private Integer status;
     private List<String> roles;
     private LocalDateTime createdAt;

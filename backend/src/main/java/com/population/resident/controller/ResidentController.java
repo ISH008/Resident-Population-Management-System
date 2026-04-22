@@ -43,14 +43,14 @@ public class ResidentController {
             @RequestParam(required = false) String name,
             @RequestParam(required = false) String idCard,
             @RequestParam(required = false) String residenceStatus) {
-        Authz.requireAnyRole("ADMIN", "USER");
+        Authz.requireAnyRole("ADMIN");
         return ApiResponse.success(residentService.pageQuery(pageNum, pageSize, name, idCard, residenceStatus));
     }
 
     @Operation(summary = "人口详情")
     @GetMapping("/{id}")
     public ApiResponse<Resident> detail(@PathVariable Long id) {
-        Authz.requireAnyRole("ADMIN", "USER");
+        Authz.requireAnyRole("ADMIN");
         return ApiResponse.success(residentService.detail(id));
     }
 
@@ -92,7 +92,7 @@ public class ResidentController {
     @Operation(summary = "判定日志")
     @GetMapping("/{id}/judge-log")
     public ApiResponse<List<ResidentJudgeLog>> judgeLogs(@PathVariable("id") Long residentId) {
-        Authz.requireAnyRole("ADMIN", "USER");
+        Authz.requireAnyRole("ADMIN");
         return ApiResponse.success(residentService.judgeLogs(residentId));
     }
 
