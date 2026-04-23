@@ -28,6 +28,27 @@ const daysBetween = (start, end) => {
   return Math.max(0, Math.floor((end.getTime() - start.getTime()) / msPerDay));
 };
 
+const calcAge = (birthday) => {
+  const birth = parseDate(birthday);
+  if (!birth) {
+    return null;
+  }
+  const now = new Date();
+  let age = now.getFullYear() - birth.getFullYear();
+  const monthDiff = now.getMonth() - birth.getMonth();
+  if (monthDiff < 0 || (monthDiff === 0 && now.getDate() < birth.getDate())) {
+    age -= 1;
+  }
+  return age < 0 ? null : age;
+};
+
+const percentText = (value, total) => {
+  if (!total) {
+    return "0%";
+  }
+  return `${((value / total) * 100).toFixed(1)}%`;
+};
+
 const fetchAll = async (apiCall, baseParams = {}) => {
   const pageSize = 100;
   let pageNum = 1;
@@ -100,6 +121,43 @@ const statusRows = computed(() => {
     ...item,
     percent: Math.round((item.count / max) * 100)
   }));
+});
+
+const residentPortrait = computed(() => {
+  const residentOnly = residents.value.filter((item) => item.residenceStatus === "RESIDENT");
+  const total = residentOnly.length;
+  const maleCount = residentOnly.filter((item) => item.gender === "M").length;
+  const femaleCount = residentOnly.filter((item) => item.gender === "F").length;
+
+  const ageBuckets = { under18: 0, between18And60: 0, above60: 0 };
+  residentOnly.forEach((item) => {
+    const age = calcAge(item.birthday);
+    if (age === null) {
+      return;
+    }
+    if (age < 18) {
+      ageBuckets.under18 += 1;
+      return;
+    }
+    if (age <= 60) {
+      ageBuckets.between18And60 += 1;
+      return;
+    }
+    ageBuckets.above60 += 1;
+  });
+
+  return {
+    total,
+    genderRows: [
+      { label: "男性", count: maleCount, percent: percentText(maleCount, total), color: "#3b82f6" },
+      { label: "女性", count: femaleCount, percent: percentText(femaleCount, total), color: "#ec4899" }
+    ],
+    ageRows: [
+      { label: "18岁以下", count: ageBuckets.under18, percent: percentText(ageBuckets.under18, total), color: "#22c55e" },
+      { label: "18-60岁", count: ageBuckets.between18And60, percent: percentText(ageBuckets.between18And60, total), color: "#f59e0b" },
+      { label: "60岁以上", count: ageBuckets.above60, percent: percentText(ageBuckets.above60, total), color: "#8b5cf6" }
+    ]
+  };
 });
 
 const trendRows = computed(() => {
@@ -210,6 +268,45 @@ onMounted(refresh);
               <div class="bar-fill" :style="{ width: `${row.percent}%`, backgroundColor: row.color }" />
             </div>
             <div class="bar-value">{{ row.count }}</div>
+          </div>
+        </el-card>
+
+        <el-card class="mt16">
+          <template #header>
+            <div class="section-title">常住人口画像</div>
+          </template>
+          <div class="portrait-tip">统计口径：仅包含常住状态为 RESIDENT 的居民</div>
+
+          <div class="portrait-block">
+            <div class="portrait-subtitle">性别构成</div>
+            <div v-for="row in residentPortrait.genderRows" :key="row.label" class="portrait-row">
+              <div class="portrait-label">{{ row.label }}</div>
+              <div class="bar-track">
+                <div
+                  class="bar-fill"
+                  :style="{ width: row.percent, backgroundColor: row.color }"
+                />
+              </div>
+              <div class="portrait-value">{{ row.count }}（{{ row.percent }}）</div>
+            </div>
+          </div>
+
+          <div class="portrait-block">
+            <div class="portrait-subtitle">年龄结构</div>
+            <div v-for="row in residentPortrait.ageRows" :key="row.label" class="portrait-row">
+              <div class="portrait-label">{{ row.label }}</div>
+              <div class="bar-track">
+                <div
+                  class="bar-fill"
+                  :style="{ width: row.percent, backgroundColor: row.color }"
+                />
+              </div>
+              <div class="portrait-value">{{ row.count }}（{{ row.percent }}）</div>
+            </div>
+          </div>
+
+          <div v-if="residentPortrait.total < 10" class="portrait-tip warn">
+            当前常住样本量较小（{{ residentPortrait.total }}人），画像结果仅供参考。
           </div>
         </el-card>
       </el-col>
@@ -355,6 +452,46 @@ onMounted(refresh);
 .trend-value {
   text-align: right;
   font-weight: 600;
+  color: #111827;
+}
+
+.portrait-tip {
+  margin-bottom: 10px;
+  color: #6b7280;
+  font-size: 12px;
+}
+
+.portrait-tip.warn {
+  margin-top: 10px;
+}
+
+.portrait-block + .portrait-block {
+  margin-top: 12px;
+}
+
+.portrait-subtitle {
+  margin-bottom: 8px;
+  font-size: 13px;
+  color: #374151;
+  font-weight: 600;
+}
+
+.portrait-row {
+  display: grid;
+  grid-template-columns: 70px 1fr 110px;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.portrait-label {
+  font-size: 12px;
+  color: #4b5563;
+}
+
+.portrait-value {
+  text-align: right;
+  font-size: 12px;
   color: #111827;
 }
 </style>
