@@ -185,7 +185,15 @@ public class ResidentService {
         resident.setGender(request.getGender());
         resident.setBirthday(request.getBirthday());
         resident.setPhone(request.getPhone());
-        resident.setActualAddress(request.getActualAddress());
+        String province = clean(request.getAddressProvince());
+        String city = clean(request.getAddressCity());
+        String district = clean(request.getAddressDistrict());
+        String detail = clean(request.getAddressDetail());
+        resident.setAddressProvince(province);
+        resident.setAddressCity(city);
+        resident.setAddressDistrict(district);
+        resident.setAddressDetail(detail);
+        resident.setActualAddress(buildAddress(province, city, district, detail, request.getActualAddress()));
         resident.setResidenceType(request.getResidenceType());
         resident.setStatus(StringUtils.hasText(request.getStatus()) ? request.getStatus() : "NORMAL");
         resident.setStayStartDate(request.getStayStartDate());
@@ -267,6 +275,27 @@ public class ResidentService {
             throw new BizException(ErrorCode.UNAUTHORIZED);
         }
         return currentUser;
+    }
+
+    private String clean(String value) {
+        if (!StringUtils.hasText(value)) {
+            return null;
+        }
+        return value.trim();
+    }
+
+    private String buildAddress(String province, String city, String district, String detail, String fallback) {
+        String joined = String.join("",
+                province == null ? "" : province,
+                city == null ? "" : city,
+                district == null ? "" : district);
+        if (StringUtils.hasText(joined) || StringUtils.hasText(detail)) {
+            if (StringUtils.hasText(detail)) {
+                return joined + detail;
+            }
+            return joined;
+        }
+        return clean(fallback);
     }
 
     private static final class ResidentJudgeLogBuilder {

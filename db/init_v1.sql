@@ -60,6 +60,7 @@ DROP TABLE IF EXISTS resident_judge_log;
 DROP TABLE IF EXISTS resident_judge_rule;
 DROP TABLE IF EXISTS resident_judge_application_attachment;
 DROP TABLE IF EXISTS resident_judge_application;
+DROP TABLE IF EXISTS resident_mobility_log;
 DROP TABLE IF EXISTS resident;
 DROP TABLE IF EXISTS sys_operation_log;
 
@@ -71,6 +72,10 @@ CREATE TABLE resident (
   birthday DATE NULL,
   phone VARCHAR(20) NULL,
   actual_address VARCHAR(255) NULL,
+  address_province VARCHAR(32) NULL,
+  address_city VARCHAR(32) NULL,
+  address_district VARCHAR(32) NULL,
+  address_detail VARCHAR(255) NULL,
   residence_type VARCHAR(32) NULL COMMENT 'PERMANENT/TEMPORARY',
   status VARCHAR(32) NOT NULL DEFAULT 'NORMAL' COMMENT 'NORMAL/MOVED_OUT/DEACTIVATED',
 
@@ -176,6 +181,23 @@ CREATE TABLE resident_judge_application_attachment (
   CONSTRAINT fk_rjaa_application_id FOREIGN KEY (application_id) REFERENCES resident_judge_application(id),
   CONSTRAINT fk_rjaa_uploader_id FOREIGN KEY (uploader_id) REFERENCES sys_user(id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='Judge application attachments';
+
+CREATE TABLE resident_mobility_log (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  resident_id BIGINT NOT NULL,
+  change_type VARCHAR(16) NOT NULL COMMENT 'INFLOW/OUTFLOW',
+  change_date DATE NOT NULL,
+  from_region VARCHAR(120) NOT NULL,
+  to_region VARCHAR(120) NOT NULL,
+  reason VARCHAR(200) NOT NULL,
+  remark VARCHAR(500) NULL,
+  operator_id BIGINT NULL,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  KEY idx_rml_resident_id (resident_id),
+  KEY idx_rml_change_date (change_date),
+  CONSTRAINT fk_rml_resident_id FOREIGN KEY (resident_id) REFERENCES resident(id),
+  CONSTRAINT fk_rml_operator_id FOREIGN KEY (operator_id) REFERENCES sys_user(id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='Resident mobility logs';
 
 CREATE TABLE sys_operation_log (
   id BIGINT PRIMARY KEY AUTO_INCREMENT,

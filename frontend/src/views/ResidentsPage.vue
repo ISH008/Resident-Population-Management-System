@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onMounted, reactive, ref } from "vue";
+import { computed, onMounted, reactive, ref, watch } from "vue";
 import { ElMessage, ElMessageBox } from "element-plus";
 import {
   createResidentApi,
@@ -10,7 +10,13 @@ import {
   residentsPageApi,
   updateResidentApi
 } from "../api/residents";
+import {
+  createResidentMobilityLogApi,
+  deleteResidentMobilityLogApi,
+  listResidentMobilityLogsApi
+} from "../api/mobility";
 import { useAuthStore } from "../stores/auth";
+import { REGION_OPTIONS } from "../constants/regionOptions";
 
 const authStore = useAuthStore();
 const isAdmin = computed(() => authStore.roles.includes("ADMIN"));
@@ -23,9 +29,25 @@ const total = ref(0);
 const dialogVisible = ref(false);
 const judgeDialogVisible = ref(false);
 const logsDialogVisible = ref(false);
+const mobilityDialogVisible = ref(false);
+const mobilityLoading = ref(false);
+const mobilitySubmitLoading = ref(false);
 const isEdit = ref(false);
 const formRef = ref(null);
 const logs = ref([]);
+const mobilityLogs = ref([]);
+const mobilityResident = reactive({
+  id: null,
+  name: ""
+});
+const mobilityForm = reactive({
+  changeType: "INFLOW",
+  changeDate: "",
+  fromRegion: "",
+  toRegion: "",
+  reason: "",
+  remark: ""
+});
 
 const query = reactive({
   pageNum: 1,
@@ -41,7 +63,10 @@ const form = reactive({
   gender: "M",
   birthday: "",
   phone: "",
-  actualAddress: "",
+  addressProvince: "",
+  addressCity: "",
+  addressDistrict: "",
+  addressDetail: "",
   residenceType: "PERMANENT",
   status: "NORMAL",
   stayStartDate: "",
@@ -93,6 +118,37 @@ const rules = {
 };
 
 const nowLabel = () => new Date().toLocaleString("zh-CN", { hour12: false });
+const provinceOptions = REGION_OPTIONS.map((item) => ({ label: item.label, value: item.value }));
+
+const cityOptions = computed(() => {
+  const province = REGION_OPTIONS.find((item) => item.value === form.addressProvince);
+  return (province?.cities || []).map((item) => ({ label: item.label, value: item.value }));
+});
+
+const districtOptions = computed(() => {
+  const province = REGION_OPTIONS.find((item) => item.value === form.addressProvince);
+  const city = (province?.cities || []).find((item) => item.value === form.addressCity);
+  return (city?.districts || []).map((item) => ({ label: item, value: item }));
+});
+
+watch(
+  () => form.addressProvince,
+  (newValue, oldValue) => {
+    if (newValue !== oldValue) {
+      form.addressCity = "";
+      form.addressDistrict = "";
+    }
+  }
+);
+
+watch(
+  () => form.addressCity,
+  (newValue, oldValue) => {
+    if (newValue !== oldValue) {
+      form.addressDistrict = "";
+    }
+  }
+);
 
 const isValidIdCard = (idCard) => {
   const code = idCard.toUpperCase();
@@ -128,7 +184,10 @@ const resetForm = () => {
   form.gender = "M";
   form.birthday = "";
   form.phone = "";
-  form.actualAddress = "";
+  form.addressProvince = "";
+  form.addressCity = "";
+  form.addressDistrict = "";
+  form.addressDetail = "";
   form.residenceType = "PERMANENT";
   form.status = "NORMAL";
   form.stayStartDate = "";
@@ -152,7 +211,13 @@ const openEdit = async (row) => {
   form.gender = data.gender;
   form.birthday = data.birthday || "";
   form.phone = data.phone || "";
-  form.actualAddress = data.actualAddress || "";
+  form.addressProvince = data.addressProvince || "";
+  form.addressCity = data.addressCity || "";
+  form.addressDistrict = data.addressDistrict || "";
+  form.addressDetail = data.addressDetail || "";
+  if (!form.addressProvince && !form.addressCity && !form.addressDistrict && !form.addressDetail && data.actualAddress) {
+    form.addressDetail = data.actualAddress;
+  }
   form.residenceType = data.residenceType || "PERMANENT";
   form.status = data.status || "NORMAL";
   form.stayStartDate = data.stayStartDate || "";
@@ -172,7 +237,10 @@ const submit = async () => {
       gender: form.gender,
       birthday: form.birthday || null,
       phone: form.phone,
-      actualAddress: form.actualAddress,
+      addressProvince: form.addressProvince || null,
+      addressCity: form.addressCity || null,
+      addressDistrict: form.addressDistrict || null,
+      addressDetail: form.addressDetail || null,
       residenceType: form.residenceType,
       status: form.status,
       stayStartDate: form.stayStartDate || null,
@@ -231,6 +299,69 @@ const openLogs = async (row) => {
   logsDialogVisible.value = true;
 };
 
+const mobilityTypeText = (type) => (type === "INFLOW" ? "迁入" : "迁出");
+
+const resetMobilityForm = () => {
+  mobilityForm.changeType = "INFLOW";
+  mobilityForm.changeDate = new Date().toISOString().slice(0, 10);
+  mobilityForm.fromRegion = "";
+  mobilityForm.toRegion = "";
+  mobilityForm.reason = "";
+  mobilityForm.remark = "";
+};
+
+const fetchMobilityLogs = async () => {
+  mobilityLoading.value = true;
+  try {
+    const { data } = await listResidentMobilityLogsApi(mobilityResident.id);
+    mobilityLogs.value = data;
+  } finally {
+    mobilityLoading.value = false;
+  }
+};
+
+const openMobility = async (row) => {
+  mobilityResident.id = row.id;
+  mobilityResident.name = row.name;
+  resetMobilityForm();
+  mobilityDialogVisible.value = true;
+  await fetchMobilityLogs();
+};
+
+const submitMobility = async () => {
+  if (!mobilityForm.changeDate) {
+    ElMessage.error("请选择迁移日期");
+    return;
+  }
+  if (!mobilityForm.fromRegion.trim() || !mobilityForm.toRegion.trim() || !mobilityForm.reason.trim()) {
+    ElMessage.error("请填写完整的迁移信息");
+    return;
+  }
+  mobilitySubmitLoading.value = true;
+  try {
+    await createResidentMobilityLogApi(mobilityResident.id, {
+      changeType: mobilityForm.changeType,
+      changeDate: mobilityForm.changeDate,
+      fromRegion: mobilityForm.fromRegion.trim(),
+      toRegion: mobilityForm.toRegion.trim(),
+      reason: mobilityForm.reason.trim(),
+      remark: mobilityForm.remark.trim()
+    });
+    ElMessage.success(`迁移记录新增成功，已记录审计（${nowLabel()}）`);
+    resetMobilityForm();
+    await fetchMobilityLogs();
+  } finally {
+    mobilitySubmitLoading.value = false;
+  }
+};
+
+const deleteMobility = async (row) => {
+  await ElMessageBox.confirm("确认删除该迁移记录吗？", "提示", { type: "warning" });
+  await deleteResidentMobilityLogApi(mobilityResident.id, row.id);
+  ElMessage.success(`迁移记录已删除，已记录审计（${nowLabel()}）`);
+  await fetchMobilityLogs();
+};
+
 onMounted(fetchData);
 </script>
 
@@ -266,6 +397,7 @@ onMounted(fetchData);
           <el-button link type="primary" @click="openLogs(row)">判定日志</el-button>
           <template v-if="isAdmin">
             <el-button link type="primary" @click="openJudge(row)">判定</el-button>
+            <el-button link type="primary" @click="openMobility(row)">迁移记录</el-button>
             <el-button link type="primary" @click="openEdit(row)">编辑</el-button>
             <el-button link type="danger" @click="handleDelete(row)">删除</el-button>
           </template>
@@ -331,8 +463,53 @@ onMounted(fetchData);
           </el-form-item>
         </el-col>
         <el-col :span="24">
-          <el-form-item label="实际地址">
-            <el-input v-model="form.actualAddress" />
+          <el-form-item label="省份">
+            <el-select
+              v-model="form.addressProvince"
+              filterable
+              allow-create
+              clearable
+              default-first-option
+              style="width: 100%"
+              placeholder="选择或输入省份"
+            >
+              <el-option v-for="item in provinceOptions" :key="item.value" :label="item.label" :value="item.value" />
+            </el-select>
+          </el-form-item>
+        </el-col>
+        <el-col :span="12">
+          <el-form-item label="城市">
+            <el-select
+              v-model="form.addressCity"
+              filterable
+              allow-create
+              clearable
+              default-first-option
+              style="width: 100%"
+              placeholder="选择或输入城市"
+            >
+              <el-option v-for="item in cityOptions" :key="item.value" :label="item.label" :value="item.value" />
+            </el-select>
+          </el-form-item>
+        </el-col>
+        <el-col :span="12">
+          <el-form-item label="区县">
+            <el-select
+              v-model="form.addressDistrict"
+              filterable
+              allow-create
+              clearable
+              default-first-option
+              style="width: 100%"
+              placeholder="选择或输入区县"
+            >
+              <el-option v-for="item in districtOptions" :key="item.value" :label="item.label" :value="item.value" />
+            </el-select>
+          </el-form-item>
+        </el-col>
+        <el-col :span="24">
+          <el-form-item label="详细地址">
+            <el-input v-model="form.addressDetail" placeholder="请输入门牌号、楼栋等详细地址" />
           </el-form-item>
         </el-col>
         <el-col :span="12">
@@ -403,6 +580,76 @@ onMounted(fetchData);
       <el-table-column prop="judgeTime" label="时间" min-width="170" />
     </el-table>
   </el-dialog>
+
+  <el-dialog v-model="mobilityDialogVisible" title="迁移记录管理" width="920px">
+    <div class="mobility-head">居民：{{ mobilityResident.name }}（ID: {{ mobilityResident.id }}）</div>
+    <el-form label-width="100px" class="mobility-form">
+      <el-row :gutter="12">
+        <el-col :span="8">
+          <el-form-item label="迁移类型">
+            <el-select v-model="mobilityForm.changeType" style="width: 100%">
+              <el-option label="迁入" value="INFLOW" />
+              <el-option label="迁出" value="OUTFLOW" />
+            </el-select>
+          </el-form-item>
+        </el-col>
+        <el-col :span="8">
+          <el-form-item label="迁移日期">
+            <el-date-picker
+              v-model="mobilityForm.changeDate"
+              type="date"
+              value-format="YYYY-MM-DD"
+              style="width: 100%"
+            />
+          </el-form-item>
+        </el-col>
+        <el-col :span="8">
+          <el-form-item label="迁移原因">
+            <el-input v-model="mobilityForm.reason" maxlength="200" />
+          </el-form-item>
+        </el-col>
+        <el-col :span="12">
+          <el-form-item label="迁出地">
+            <el-input v-model="mobilityForm.fromRegion" maxlength="120" />
+          </el-form-item>
+        </el-col>
+        <el-col :span="12">
+          <el-form-item label="迁入地">
+            <el-input v-model="mobilityForm.toRegion" maxlength="120" />
+          </el-form-item>
+        </el-col>
+        <el-col :span="24">
+          <el-form-item label="备注">
+            <el-input v-model="mobilityForm.remark" maxlength="500" />
+          </el-form-item>
+        </el-col>
+      </el-row>
+    </el-form>
+    <div class="mobility-actions">
+      <el-button type="primary" :loading="mobilitySubmitLoading" @click="submitMobility">新增迁移记录</el-button>
+    </div>
+
+    <el-table :data="mobilityLogs" border max-height="360" v-loading="mobilityLoading">
+      <el-table-column prop="changeDate" label="迁移日期" width="120" />
+      <el-table-column prop="changeType" label="类型" width="90">
+        <template #default="{ row }">
+          <el-tag :type="row.changeType === 'INFLOW' ? 'success' : 'warning'">
+            {{ mobilityTypeText(row.changeType) }}
+          </el-tag>
+        </template>
+      </el-table-column>
+      <el-table-column prop="fromRegion" label="迁出地" min-width="140" />
+      <el-table-column prop="toRegion" label="迁入地" min-width="140" />
+      <el-table-column prop="reason" label="原因" min-width="160" />
+      <el-table-column prop="operatorUsername" label="操作人" width="100" />
+      <el-table-column prop="createdAt" label="登记时间" min-width="160" />
+      <el-table-column label="操作" width="90" fixed="right">
+        <template #default="{ row }">
+          <el-button link type="danger" @click="deleteMobility(row)">删除</el-button>
+        </template>
+      </el-table-column>
+    </el-table>
+  </el-dialog>
 </template>
 
 <style scoped>
@@ -418,6 +665,25 @@ onMounted(fetchData);
 
 .pager {
   margin-top: 16px;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.mobility-head {
+  margin-bottom: 10px;
+  color: #374151;
+  font-size: 13px;
+}
+
+.mobility-form {
+  padding: 12px 12px 0;
+  margin-bottom: 8px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+}
+
+.mobility-actions {
+  margin-bottom: 12px;
   display: flex;
   justify-content: flex-end;
 }

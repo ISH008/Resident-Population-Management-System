@@ -43,11 +43,42 @@ const rejectForm = reactive({
   reviewComment: ""
 });
 
+const parseDate = (value) => {
+  if (!value) {
+    return null;
+  }
+  const normalized = String(value).includes("T") ? String(value) : String(value).replace(" ", "T");
+  const date = new Date(normalized);
+  return Number.isNaN(date.getTime()) ? null : date;
+};
+
+const startOfDay = (date) => new Date(date.getFullYear(), date.getMonth(), date.getDate());
+
+const calcPendingDays = (createdAt) => {
+  const created = parseDate(createdAt);
+  if (!created) {
+    return 0;
+  }
+  const today = startOfDay(new Date());
+  const createdDay = startOfDay(created);
+  const msPerDay = 24 * 60 * 60 * 1000;
+  return Math.max(0, Math.floor((today.getTime() - createdDay.getTime()) / msPerDay));
+};
+
+const enrichRow = (row) => {
+  const pendingDays = row.status === "PENDING" ? calcPendingDays(row.createdAt) : 0;
+  return {
+    ...row,
+    pendingDays,
+    isOverdue: row.status === "PENDING" && pendingDays > 7
+  };
+};
+
 const fetchData = async () => {
   loading.value = true;
   try {
     const { data } = await judgeApplicationsPageApi(query);
-    tableData.value = data.records;
+    tableData.value = (data.records || []).map(enrichRow);
     total.value = data.total;
   } finally {
     loading.value = false;
@@ -72,6 +103,13 @@ const statusText = (status) => {
     return "已驳回";
   }
   return "待处理";
+};
+
+const tableRowClassName = ({ row }) => {
+  if (row.isOverdue) {
+    return "overdue-row";
+  }
+  return "";
 };
 
 const openApprove = (row) => {
@@ -207,7 +245,7 @@ onMounted(fetchData);
       </el-form-item>
     </el-form>
 
-    <el-table :data="tableData" v-loading="loading" border>
+    <el-table :data="tableData" v-loading="loading" border :row-class-name="tableRowClassName">
       <el-table-column prop="id" label="ID" width="70" />
       <el-table-column prop="residentName" label="居民姓名" width="120" />
       <el-table-column prop="residentId" label="居民ID" width="90" />
@@ -228,6 +266,17 @@ onMounted(fetchData);
       </el-table-column>
       <el-table-column prop="reviewComment" label="审核意见" min-width="150" />
       <el-table-column prop="createdAt" label="提交时间" min-width="170" />
+      <el-table-column label="待处理天数" width="130">
+        <template #default="{ row }">
+          <template v-if="row.status === 'PENDING'">
+            <span :class="{ 'overdue-text': row.isOverdue }">
+              {{ row.pendingDays }}天
+            </span>
+            <el-tag v-if="row.isOverdue" type="danger" size="small" effect="plain" class="timeout-tag">已超时</el-tag>
+          </template>
+          <span v-else>-</span>
+        </template>
+      </el-table-column>
       <el-table-column prop="reviewedAt" label="处理时间" min-width="170" />
       <el-table-column label="操作" width="180" fixed="right">
         <template #default="{ row }">
@@ -341,5 +390,18 @@ onMounted(fetchData);
   margin-top: 16px;
   display: flex;
   justify-content: flex-end;
+}
+
+:deep(.el-table .overdue-row) {
+  --el-table-tr-bg-color: #fff1f2;
+}
+
+.overdue-text {
+  color: #dc2626;
+  font-weight: 600;
+}
+
+.timeout-tag {
+  margin-left: 6px;
 }
 </style>

@@ -27,6 +27,10 @@
             birthday,
             phone,
             actual_address,
+            address_province,
+            address_city,
+            address_district,
+            address_detail,
             residence_type,
             status,
             residence_status,
@@ -58,6 +62,10 @@
             birthday,
             phone,
             actual_address,
+            address_province,
+            address_city,
+            address_district,
+            address_detail,
             residence_type,
             status,
             residence_status,
@@ -78,11 +86,11 @@
 
     <insert id="insert" parameterType="com.population.resident.domain.Resident" useGeneratedKeys="true" keyProperty="id">
         INSERT INTO resident (
-            name, id_card, gender, birthday, phone, actual_address, residence_type, status,
+            name, id_card, gender, birthday, phone, actual_address, address_province, address_city, address_district, address_detail, residence_type, status,
             stay_start_date, stay_end_date, is_local_hukou, proof_type,
             created_by, updated_by
         ) VALUES (
-            #{name}, #{idCard}, #{gender}, #{birthday}, #{phone}, #{actualAddress}, #{residenceType}, #{status},
+            #{name}, #{idCard}, #{gender}, #{birthday}, #{phone}, #{actualAddress}, #{addressProvince}, #{addressCity}, #{addressDistrict}, #{addressDetail}, #{residenceType}, #{status},
             #{stayStartDate}, #{stayEndDate}, #{isLocalHukou}, #{proofType},
             #{createdBy}, #{updatedBy}
         )
@@ -97,6 +105,10 @@
             birthday = #{birthday},
             phone = #{phone},
             actual_address = #{actualAddress},
+            address_province = #{addressProvince},
+            address_city = #{addressCity},
+            address_district = #{addressDistrict},
+            address_detail = #{addressDetail},
             residence_type = #{residenceType},
             status = #{status},
             stay_start_date = #{stayStartDate},

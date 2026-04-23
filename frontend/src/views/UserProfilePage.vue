@@ -2,13 +2,16 @@
 import { onMounted, reactive, ref } from "vue";
 import { ElMessage } from "element-plus";
 import { updateProfileApi } from "../api/auth";
+import { myMobilityLogsApi } from "../api/mobility";
 import { useAuthStore } from "../stores/auth";
 import { useRouter } from "vue-router";
 
 const router = useRouter();
 const authStore = useAuthStore();
 const loading = ref(false);
+const mobilityLoading = ref(false);
 const dialogVisible = ref(false);
+const mobilityLogs = ref([]);
 const view = reactive({
   username: "",
   realName: "",
@@ -72,11 +75,24 @@ const saveProfile = async () => {
   }
 };
 
+const mobilityTypeText = (type) => (type === "INFLOW" ? "迁入" : "迁出");
+
+const fetchMyMobilityLogs = async () => {
+  mobilityLoading.value = true;
+  try {
+    const { data } = await myMobilityLogsApi();
+    mobilityLogs.value = data;
+  } finally {
+    mobilityLoading.value = false;
+  }
+};
+
 onMounted(async () => {
   if (!authStore.userInfo) {
     await authStore.fetchMe();
   }
   syncView();
+  await fetchMyMobilityLogs();
 });
 </script>
 
@@ -107,6 +123,28 @@ onMounted(async () => {
     </el-form>
   </el-card>
 
+  <el-card class="mt16">
+    <template #header>
+      <div class="head">我的迁移记录</div>
+    </template>
+    <div v-if="!view.residentId" class="hint">当前账号未绑定居民档案，暂无迁移记录。</div>
+    <el-table v-else :data="mobilityLogs" border v-loading="mobilityLoading">
+      <el-table-column prop="changeDate" label="迁移日期" width="120" />
+      <el-table-column prop="changeType" label="类型" width="90">
+        <template #default="{ row }">
+          <el-tag :type="row.changeType === 'INFLOW' ? 'success' : 'warning'">
+            {{ mobilityTypeText(row.changeType) }}
+          </el-tag>
+        </template>
+      </el-table-column>
+      <el-table-column prop="fromRegion" label="迁出地" min-width="140" />
+      <el-table-column prop="toRegion" label="迁入地" min-width="140" />
+      <el-table-column prop="reason" label="迁移原因" min-width="160" />
+      <el-table-column prop="remark" label="备注" min-width="160" />
+      <el-table-column prop="createdAt" label="登记时间" min-width="170" />
+    </el-table>
+  </el-card>
+
   <el-dialog v-model="dialogVisible" title="修改资料" width="460px">
     <el-form label-width="90px">
       <el-form-item label="用户名">
@@ -129,5 +167,14 @@ onMounted(async () => {
 <style scoped>
 .head {
   font-weight: 600;
+}
+
+.mt16 {
+  margin-top: 16px;
+}
+
+.hint {
+  color: #6b7280;
+  font-size: 13px;
 }
 </style>

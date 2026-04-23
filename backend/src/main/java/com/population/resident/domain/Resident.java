@@ -14,6 +14,10 @@ public class Resident {
     private LocalDate birthday;
     private String phone;
     private String actualAddress;
+    private String addressProvince;
+    private String addressCity;
+    private String addressDistrict;
+    private String addressDetail;
     private String residenceType;
     private String status;
     private String residenceStatus;
