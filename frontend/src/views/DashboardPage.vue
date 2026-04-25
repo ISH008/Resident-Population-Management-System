@@ -240,11 +240,11 @@ onMounted(refresh);
   <div v-loading="loading">
     <el-card>
       <template #header>
-        <div class="head-wrap">
-          <div class="head-title">管理驾驶舱</div>
-          <el-button type="primary" @click="refresh">刷新数据</el-button>
-        </div>
-      </template>
+          <div class="head-wrap">
+            <div class="head-title">数据看板</div>
+            <el-button type="primary" @click="refresh">刷新数据</el-button>
+          </div>
+        </template>
 
       <div class="kpi-grid">
         <el-statistic title="人口总量" :value="kpi.totalResidents" />

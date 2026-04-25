@@ -28,7 +28,7 @@ const menus = computed(() => {
 
   if (currentRole === "ADMIN") {
     base.unshift({ path: "/dashboard", title: "数据看板" });
-    base.push({ path: "/residents", title: "常住人口" });
+    base.push({ path: "/residents", title: "居民档案" });
     base.push({ path: "/judge-applications-review", title: "申请处理" });
     base.push({ path: "/users", title: "用户管理" });
     base.push({ path: "/audit-logs", title: "操作审计" });

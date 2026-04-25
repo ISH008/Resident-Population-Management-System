@@ -53,7 +53,8 @@ const query = reactive({
   pageNum: 1,
   pageSize: 10,
   name: "",
-  idCard: ""
+  idCard: "",
+  residenceStatus: ""
 });
 
 const form = reactive({
@@ -369,7 +370,7 @@ onMounted(fetchData);
   <el-card>
     <template #header>
       <div class="head-wrap">
-        <span class="head">常住人口列表</span>
+        <span class="head">居民档案列表</span>
         <el-button v-if="isAdmin" type="primary" @click="openCreate">新增人口</el-button>
       </div>
     </template>
@@ -379,6 +380,13 @@ onMounted(fetchData);
       </el-form-item>
       <el-form-item label="身份证">
         <el-input v-model="query.idCard" placeholder="身份证号" clearable />
+      </el-form-item>
+      <el-form-item label="常住状态">
+        <el-select v-model="query.residenceStatus" placeholder="全部" clearable style="width: 160px">
+          <el-option label="常住人口" value="RESIDENT" />
+          <el-option label="待判定" value="PENDING" />
+          <el-option label="非常住人口" value="NON_RESIDENT" />
+        </el-select>
       </el-form-item>
       <el-form-item>
         <el-button type="primary" @click="query.pageNum = 1; fetchData()">查询</el-button>
