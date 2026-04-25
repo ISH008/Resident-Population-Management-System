@@ -39,8 +39,7 @@ public class AuthService {
             throw new BizException(ErrorCode.UNAUTHORIZED);
         }
 
-        boolean passwordOk = passwordEncoder.matches(request.getPassword(), user.getPassword())
-                || request.getPassword().equals(user.getPassword());
+        boolean passwordOk = passwordEncoder.matches(request.getPassword(), user.getPassword());
         if (!passwordOk) {
             throw new BizException(ErrorCode.UNAUTHORIZED);
         }
@@ -161,8 +160,7 @@ public class AuthService {
         if (user == null || user.getIsDeleted() == 1) {
             throw new BizException(ErrorCode.UNAUTHORIZED);
         }
-        boolean oldPasswordOk = passwordEncoder.matches(request.getOldPassword(), user.getPassword())
-                || request.getOldPassword().equals(user.getPassword());
+        boolean oldPasswordOk = passwordEncoder.matches(request.getOldPassword(), user.getPassword());
         if (!oldPasswordOk) {
             throw new BizException(ErrorCode.BAD_REQUEST.getCode(), "旧密码错误");
         }

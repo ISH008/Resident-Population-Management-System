@@ -13,8 +13,8 @@ const formRef = ref(null);
 const registerRef = ref(null);
 const registerVisible = ref(false);
 const form = reactive({
-  username: "admin",
-  password: "123456"
+  username: "",
+  password: ""
 });
 const registerForm = reactive({
   username: "",

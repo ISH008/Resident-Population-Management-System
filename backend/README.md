@@ -34,7 +34,7 @@
 
 ## Notes
 - Current auth is JWT + interceptor.
-- `admin` password is plain text for development bootstrap only.
+- `admin` seed password uses BCrypt hash in DB initialization.
 - 申请附件默认保存到 `APP_STORAGE_BASE_DIR/judge-applications/yyyyMMdd`。
 
 ## Implemented APIs (v1)

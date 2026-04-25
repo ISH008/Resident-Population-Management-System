@@ -17,6 +17,7 @@ import com.population.resident.security.UserContext;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
@@ -35,6 +36,7 @@ import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class AuthServiceTest {
+    private final BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
 
     @Mock
     private SysUserMapper sysUserMapper;
@@ -58,7 +60,7 @@ class AuthServiceTest {
         SysUser user = new SysUser();
         user.setId(1L);
         user.setUsername("user_01");
-        user.setPassword("123456");
+        user.setPassword(passwordEncoder.encode("123456"));
         user.setStatus(1);
         user.setIsDeleted(0);
         user.setResidentId(8L);
@@ -76,6 +78,24 @@ class AuthServiceTest {
         assertEquals("token-x", response.getToken());
         assertEquals(8L, response.getUserInfo().getResidentId());
         assertEquals("USER", response.getUserInfo().getCurrentRole());
+    }
+
+    @Test
+    void login_shouldRejectLegacyPlainPassword() {
+        SysUser user = new SysUser();
+        user.setId(1L);
+        user.setUsername("legacy_user");
+        user.setPassword("123456");
+        user.setStatus(1);
+        user.setIsDeleted(0);
+        when(sysUserMapper.findByUsername("legacy_user")).thenReturn(user);
+
+        LoginRequest request = new LoginRequest();
+        request.setUsername("legacy_user");
+        request.setPassword("123456");
+
+        BizException ex = assertThrows(BizException.class, () -> authService.login(request));
+        assertEquals(ErrorCode.UNAUTHORIZED.getCode(), ex.getCode());
     }
 
     @Test
@@ -112,7 +132,7 @@ class AuthServiceTest {
                 .build());
         SysUser user = new SysUser();
         user.setId(10L);
-        user.setPassword("abc123");
+        user.setPassword(passwordEncoder.encode("abc123"));
         user.setIsDeleted(0);
         when(sysUserMapper.findById(10L)).thenReturn(user);
 

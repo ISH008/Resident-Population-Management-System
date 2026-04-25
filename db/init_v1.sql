@@ -226,9 +226,9 @@ VALUES
   ('USER', CONVERT(0xE699AEE9809AE794A8E688B7 USING utf8mb4), 1)
 ON DUPLICATE KEY UPDATE role_name = VALUES(role_name), status = VALUES(status);
 
--- Development only: plain text password "123456". Must switch to BCrypt hash in production.
+-- Development default admin password is "123456" (BCrypt hashed).
 INSERT INTO sys_user (username, password, real_name, phone, status)
-VALUES ('admin', '123456', '系统管理员', '13800000000', 1)
+VALUES ('admin', '$2a$10$Xxml3Z06bHt4X2HXaOqlBeb1tkZsPPHM36RJWntxTXgmADNB0SyQi', '系统管理员', '13800000000', 1)
 ON DUPLICATE KEY UPDATE real_name = VALUES(real_name), phone = VALUES(phone), status = VALUES(status);
 
 INSERT INTO sys_user_role (user_id, role_id)
