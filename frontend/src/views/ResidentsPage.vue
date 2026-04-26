@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onMounted, reactive, ref, watch } from "vue";
+import { computed, onMounted, reactive, ref } from "vue";
 import { ElMessage, ElMessageBox } from "element-plus";
 import {
   createResidentApi,
@@ -132,24 +132,14 @@ const districtOptions = computed(() => {
   return (city?.districts || []).map((item) => ({ label: item, value: item }));
 });
 
-watch(
-  () => form.addressProvince,
-  (newValue, oldValue) => {
-    if (newValue !== oldValue) {
-      form.addressCity = "";
-      form.addressDistrict = "";
-    }
-  }
-);
+const handleProvinceChange = () => {
+  form.addressCity = "";
+  form.addressDistrict = "";
+};
 
-watch(
-  () => form.addressCity,
-  (newValue, oldValue) => {
-    if (newValue !== oldValue) {
-      form.addressDistrict = "";
-    }
-  }
-);
+const handleCityChange = () => {
+  form.addressDistrict = "";
+};
 
 const isValidIdCard = (idCard) => {
   const code = idCard.toUpperCase();
@@ -264,7 +254,11 @@ const submit = async () => {
 };
 
 const handleDelete = async (row) => {
-  await ElMessageBox.confirm(`确认删除 ${row.name} 吗？`, "提示", { type: "warning" });
+  await ElMessageBox.confirm(`确认删除 ${row.name} 吗？`, "提示", {
+    type: "warning",
+    cancelButtonText: "取消",
+    confirmButtonText: "确定"
+  });
   await deleteResidentApi(row.id);
   ElMessage.success(`删除成功，已记录审计（${nowLabel()}）`);
   await fetchData();
@@ -480,6 +474,7 @@ onMounted(fetchData);
               default-first-option
               style="width: 100%"
               placeholder="选择或输入省份"
+              @change="handleProvinceChange"
             >
               <el-option v-for="item in provinceOptions" :key="item.value" :label="item.label" :value="item.value" />
             </el-select>
@@ -495,6 +490,7 @@ onMounted(fetchData);
               default-first-option
               style="width: 100%"
               placeholder="选择或输入城市"
+              @change="handleCityChange"
             >
               <el-option v-for="item in cityOptions" :key="item.value" :label="item.label" :value="item.value" />
             </el-select>
