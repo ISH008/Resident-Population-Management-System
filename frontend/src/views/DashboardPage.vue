@@ -49,6 +49,14 @@ const percentText = (value, total) => {
   return `${((value / total) * 100).toFixed(1)}%`;
 };
 
+const RESIDENCE_STATUS_LABEL_MAP = {
+  RESIDENT: "常住人口",
+  PENDING: "待判定",
+  NON_RESIDENT: "非常住人口"
+};
+
+const formatResidenceStatus = (status) => RESIDENCE_STATUS_LABEL_MAP[status] || status || "-";
+
 const fetchAll = async (apiCall, baseParams = {}) => {
   const pageSize = 100;
   let pageNum = 1;
@@ -112,9 +120,9 @@ const kpi = computed(() => {
 
 const statusRows = computed(() => {
   const rows = [
-    { label: "RESIDENT", count: kpi.value.residentCount, color: "#16a34a" },
-    { label: "PENDING", count: kpi.value.pendingCount, color: "#f59e0b" },
-    { label: "NON_RESIDENT", count: kpi.value.nonResidentCount, color: "#ef4444" }
+    { label: "常住人口", count: kpi.value.residentCount, color: "#16a34a" },
+    { label: "待判定", count: kpi.value.pendingCount, color: "#f59e0b" },
+    { label: "非常住人口", count: kpi.value.nonResidentCount, color: "#ef4444" }
   ];
   const max = Math.max(1, ...rows.map((item) => item.count));
   return rows.map((item) => ({
@@ -275,7 +283,7 @@ onMounted(refresh);
           <template #header>
             <div class="section-title">常住人口画像</div>
           </template>
-          <div class="portrait-tip">统计口径：仅包含常住状态为 RESIDENT 的居民</div>
+          <div class="portrait-tip">统计口径：仅包含常住状态为常住人口的居民</div>
 
           <div class="portrait-block">
             <div class="portrait-subtitle">性别构成</div>
@@ -346,7 +354,9 @@ onMounted(refresh);
       <el-table :data="riskList" border>
         <el-table-column prop="id" label="ID" width="80" />
         <el-table-column prop="name" label="姓名" />
-        <el-table-column prop="residenceStatus" label="状态" width="140" />
+        <el-table-column prop="residenceStatus" label="状态" width="140">
+          <template #default="{ row }">{{ formatResidenceStatus(row.residenceStatus) }}</template>
+        </el-table-column>
         <el-table-column prop="residenceScore" label="评分" width="100" />
         <el-table-column prop="pendingDays" label="待判定天数" width="140" />
       </el-table>

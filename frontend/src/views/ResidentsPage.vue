@@ -119,6 +119,13 @@ const rules = {
 };
 
 const nowLabel = () => new Date().toLocaleString("zh-CN", { hour12: false });
+const RESIDENCE_STATUS_LABEL_MAP = {
+  RESIDENT: "常住人口",
+  PENDING: "待判定",
+  NON_RESIDENT: "非常住人口"
+};
+
+const formatResidenceStatus = (status) => RESIDENCE_STATUS_LABEL_MAP[status] || status || "-";
 const provinceOptions = REGION_OPTIONS.map((item) => ({ label: item.label, value: item.value }));
 
 const cityOptions = computed(() => {
@@ -392,7 +399,9 @@ onMounted(fetchData);
       <el-table-column prop="name" label="姓名" />
       <el-table-column prop="idCard" label="身份证号" min-width="180" />
       <el-table-column prop="phone" label="手机号" />
-      <el-table-column prop="residenceStatus" label="常住状态" width="120" />
+      <el-table-column prop="residenceStatus" label="常住状态" width="120">
+        <template #default="{ row }">{{ formatResidenceStatus(row.residenceStatus) }}</template>
+      </el-table-column>
       <el-table-column prop="residenceScore" label="评分" width="80" />
       <el-table-column label="操作" min-width="240" fixed="right">
         <template #default="{ row }">
@@ -579,7 +588,9 @@ onMounted(fetchData);
       </el-table-column>
       <el-table-column prop="scoreDelta" label="分值变化" width="100" />
       <el-table-column prop="finalScore" label="累计分" width="90" />
-      <el-table-column prop="finalStatus" label="状态" width="120" />
+      <el-table-column prop="finalStatus" label="状态" width="120">
+        <template #default="{ row }">{{ formatResidenceStatus(row.finalStatus) }}</template>
+      </el-table-column>
       <el-table-column prop="judgeVersion" label="版本" width="90" />
       <el-table-column prop="judgeTime" label="时间" min-width="170" />
     </el-table>
