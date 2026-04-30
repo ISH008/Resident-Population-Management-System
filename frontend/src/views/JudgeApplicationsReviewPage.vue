@@ -31,9 +31,6 @@ const query = reactive({
 
 const approveForm = reactive({
   approveMode: "AUTO",
-  localEmploySocial: true,
-  localActivity90d: true,
-  judgeVersion: "v1",
   manualStatus: "PENDING",
   manualReason: "",
   reviewComment: ""
@@ -115,9 +112,6 @@ const tableRowClassName = ({ row }) => {
 const openApprove = (row) => {
   currentRow.value = row;
   approveForm.approveMode = "AUTO";
-  approveForm.localEmploySocial = row.localEmploySocial === 1;
-  approveForm.localActivity90d = row.localActivity90d === 1;
-  approveForm.judgeVersion = row.judgeVersion || "v1";
   approveForm.manualStatus = "PENDING";
   approveForm.manualReason = "";
   approveForm.reviewComment = "";
@@ -136,9 +130,6 @@ const submitApprove = async () => {
   try {
     await approveJudgeApplicationApi(currentRow.value.id, {
       approveMode: approveForm.approveMode,
-      localEmploySocial: approveForm.approveMode === "AUTO" ? approveForm.localEmploySocial : undefined,
-      localActivity90d: approveForm.approveMode === "AUTO" ? approveForm.localActivity90d : undefined,
-      judgeVersion: approveForm.approveMode === "AUTO" ? approveForm.judgeVersion || undefined : undefined,
       manualStatus: approveForm.approveMode === "MANUAL" ? approveForm.manualStatus : undefined,
       manualReason: approveForm.approveMode === "MANUAL" ? approveForm.manualReason || undefined : undefined,
       reviewComment: approveForm.reviewComment || undefined
@@ -316,19 +307,7 @@ onMounted(fetchData);
         </el-radio-group>
       </el-form-item>
 
-      <template v-if="approveForm.approveMode === 'AUTO'">
-        <el-form-item label="本地就业/社保/学籍">
-          <el-switch v-model="approveForm.localEmploySocial" />
-        </el-form-item>
-        <el-form-item label="近90天本地活动">
-          <el-switch v-model="approveForm.localActivity90d" />
-        </el-form-item>
-        <el-form-item label="规则版本">
-          <el-input v-model="approveForm.judgeVersion" />
-        </el-form-item>
-      </template>
-
-      <template v-else>
+      <template v-if="approveForm.approveMode === 'MANUAL'">
         <el-form-item label="人工判定状态">
           <el-select v-model="approveForm.manualStatus">
             <el-option label="常住人口" value="RESIDENT" />

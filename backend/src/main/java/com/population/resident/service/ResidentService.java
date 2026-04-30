@@ -11,7 +11,6 @@ import com.population.resident.dto.PageResponse;
 import com.population.resident.dto.ResidentUpsertRequest;
 import com.population.resident.exception.BizException;
 import com.population.resident.mapper.ResidentJudgeLogMapper;
-import com.population.resident.mapper.ResidentJudgeRuleMapper;
 import com.population.resident.mapper.ResidentMapper;
 import com.population.resident.security.CurrentUser;
 import com.population.resident.security.UserContext;
@@ -20,7 +19,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
-import java.time.LocalDate;
 import java.util.List;
 import java.util.Locale;
 
@@ -29,7 +27,6 @@ import java.util.Locale;
 public class ResidentService {
 
     private final ResidentMapper residentMapper;
-    private final ResidentJudgeRuleMapper residentJudgeRuleMapper;
     private final ResidentJudgeLogMapper residentJudgeLogMapper;
 
     public PageResponse<Resident> pageQuery(Integer pageNum, Integer pageSize, String name, String idCard, String residenceStatus) {
@@ -97,45 +94,100 @@ public class ResidentService {
         if (resident == null) {
             throw new BizException(ErrorCode.NOT_FOUND);
         }
-        String version = StringUtils.hasText(request.getVersion()) ? request.getVersion() : "v1";
-        List<ResidentJudgeRule> rules = residentJudgeRuleMapper.findEnabledRules(version);
-        if (rules.isEmpty()) {
-            throw new BizException(ErrorCode.BAD_REQUEST.getCode(), "没有可用判定规则");
+        return judgeByDocumentRules(resident, request, "v2");
+    }
+
+    private JudgeResultResponse judgeByDocumentRules(Resident resident, JudgeRequest request, String version) {
+        CurrentUser currentUser = requireCurrentUser();
+        List<String> hitRules = new java.util.ArrayList<>();
+        String finalStatus;
+        int finalScore;
+
+        if (isTrue(request.getTemporaryVisitorOnSurveyNight())
+                || isTrue(request.getBornAfterSurveyTime())
+                || isTrue(request.getActiveMilitary())
+                || isTrue(request.getHkMoTwResident())
+                || isTrue(request.getForeignResident())
+                || isTrue(request.getFullHouseholdDeceased())
+                || isTrue(request.getUnableToDetermineResidence())
+                || isTrue(request.getFullHouseholdAwayOverHalfYear())) {
+            finalStatus = "NON_RESIDENT";
+            finalScore = 0;
+            hitRules.add("DOC_EXCLUDE");
+        } else if (isTrue(request.getDiedAfterSurveyTime())) {
+            finalStatus = "RESIDENT";
+            finalScore = 0;
+            hitRules.add("DOC_DEATH_AFTER_SURVEY_INCLUDED");
+        } else if (isTrue(request.getHukouInCurrentTown()) && (isTrue(request.getUsuallyLivesHere()) || isTrue(request.getInCurrentTown()))) {
+            finalStatus = "RESIDENT";
+            finalScore = 0;
+            hitRules.add("DOC_HUKOU_LOCAL_AND_USUALLY_LIVES_HERE");
+        } else if (isTrue(request.getInCurrentTown()) && isTrue(request.getHukouPending())) {
+            finalStatus = "RESIDENT";
+            finalScore = 0;
+            hitRules.add("DOC_HUKOU_PENDING_BUT_PRESENT");
+        } else if (isTrue(request.getInCurrentTown()) && isTrue(request.getLeftHukouTownOverHalfYear())) {
+            finalStatus = "RESIDENT";
+            finalScore = 0;
+            hitRules.add("DOC_PRESENT_AND_LEFT_HUKOU_OVER_6M");
+        } else if (isTrue(request.getHukouInCurrentTown()) && isTrue(request.getOutOfHukouTownLessThanHalfYear())) {
+            finalStatus = "RESIDENT";
+            finalScore = 0;
+            hitRules.add("DOC_HUKOU_LOCAL_OUTFLOW_UNDER_6M");
+        } else if (isTrue(request.getHukouInCurrentTown()) && isTrue(request.getOverseasStudyOrWork())) {
+            finalStatus = "RESIDENT";
+            finalScore = 0;
+            hitRules.add("DOC_HUKOU_LOCAL_OVERSEAS");
+        } else if (isTrue(request.getStudentBoarding()) && isTrue(request.getHukouAtHome())) {
+            finalStatus = "RESIDENT";
+            finalScore = 0;
+            hitRules.add("DOC_BOARDING_STUDENT_HUKOU_AT_HOME");
+        } else if (isTrue(request.getRentalHouseLandlordHukouAtThisAddress())) {
+            finalStatus = "RESIDENT";
+            finalScore = 0;
+            hitRules.add("DOC_RENTAL_LANDLORD_HUKOU_LOCAL");
+        } else if (isTrue(request.getMovedAfterSurveyTime())) {
+            finalStatus = "RESIDENT";
+            finalScore = 0;
+            hitRules.add("DOC_MOVED_AFTER_SURVEY_ORIGINAL_PLACE_REGISTER");
+        } else if (isTrue(request.getReturnedHukouTownAndLivedOverHalfYear()) && !isTrue(request.getOccasionalReturnOnly())) {
+            finalStatus = "NON_RESIDENT";
+            finalScore = 0;
+            hitRules.add("DOC_RETURNED_HUKOU_OVER_6M_RECOUNT");
+        } else {
+            finalStatus = "PENDING";
+            finalScore = 0;
+            hitRules.add("DOC_NEED_MANUAL_REVIEW");
         }
 
-        int score = 0;
-        List<String> hitRules = new java.util.ArrayList<>();
-        CurrentUser currentUser = requireCurrentUser();
-        for (ResidentJudgeRule rule : rules) {
-            boolean hit = evaluateRule(rule, resident, request);
-            int delta = hit ? rule.getWeight() : 0;
-            score += delta;
-            if (hit) {
-                hitRules.add(rule.getRuleCode());
-            }
+        for (String ruleCode : hitRules) {
             residentJudgeLogMapper.insert(buildLog(
                     resident.getId(),
-                    rule,
-                    hit,
-                    delta,
-                    score,
-                    calculateStatus(score),
+                    buildVirtualRule(ruleCode),
+                    true,
+                    0,
+                    finalScore,
+                    finalStatus,
                     version,
                     "auto",
                     currentUser.getUserId()
             ));
         }
-
-        String finalStatus = calculateStatus(score);
-        String finalReason = hitRules.isEmpty() ? "未命中规则" : "命中规则: " + String.join(",", hitRules);
-        int updated = residentMapper.updateJudgeResult(id, finalStatus, score, version, finalReason, currentUser.getUserId());
+        String finalReason = "文档规则判定: " + String.join(",", hitRules);
+        int updated = residentMapper.updateJudgeResult(
+                resident.getId(),
+                finalStatus,
+                finalScore,
+                version,
+                finalReason,
+                currentUser.getUserId()
+        );
         if (updated == 0) {
             throw new BizException(ErrorCode.INTERNAL_ERROR);
         }
-
         return JudgeResultResponse.builder()
-                .residentId(id)
-                .finalScore(score)
+                .residentId(resident.getId())
+                .finalScore(finalScore)
                 .finalStatus(finalStatus)
                 .judgeVersion(version)
                 .hitRules(hitRules)
@@ -202,48 +254,15 @@ public class ResidentService {
         resident.setProofType(request.getProofType());
     }
 
-    private boolean evaluateRule(ResidentJudgeRule rule, Resident resident, JudgeRequest request) {
-        String code = rule.getRuleCode();
-        if ("STAY_180_DAYS".equals(code)) {
-            return stayDays(resident) >= parseThreshold(rule.getThresholdValue(), 180);
-        }
-        if ("VALID_PROOF".equals(code)) {
-            return StringUtils.hasText(resident.getProofType());
-        }
-        if ("LOCAL_EMPLOY_SOCIAL".equals(code)) {
-            return Boolean.TRUE.equals(request.getLocalEmploySocial());
-        }
-        if ("LOCAL_ACTIVITY_90D".equals(code)) {
-            return Boolean.TRUE.equals(request.getLocalActivity90d());
-        }
-        return false;
+    private ResidentJudgeRule buildVirtualRule(String ruleCode) {
+        ResidentJudgeRule rule = new ResidentJudgeRule();
+        rule.setId(null);
+        rule.setRuleCode(ruleCode);
+        return rule;
     }
 
-    private int stayDays(Resident resident) {
-        if (resident.getStayStartDate() == null) {
-            return 0;
-        }
-        LocalDate end = resident.getStayEndDate() == null ? LocalDate.now() : resident.getStayEndDate();
-        long days = java.time.temporal.ChronoUnit.DAYS.between(resident.getStayStartDate(), end);
-        return (int) Math.max(days, 0);
-    }
-
-    private int parseThreshold(String threshold, int fallback) {
-        try {
-            return Integer.parseInt(threshold);
-        } catch (Exception ex) {
-            return fallback;
-        }
-    }
-
-    private String calculateStatus(int score) {
-        if (score >= 70) {
-            return "RESIDENT";
-        }
-        if (score >= 40) {
-            return "PENDING";
-        }
-        return "NON_RESIDENT";
+    private boolean isTrue(Boolean value) {
+        return Boolean.TRUE.equals(value);
     }
 
     private ResidentJudgeLog buildLog(Long residentId,

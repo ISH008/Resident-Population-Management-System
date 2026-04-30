@@ -30,10 +30,7 @@ const query = reactive({
 
 const form = reactive({
   applyReason: "",
-  evidenceText: "",
-  localEmploySocial: true,
-  localActivity90d: true,
-  judgeVersion: "v1"
+  evidenceText: ""
 });
 
 const rules = {
@@ -82,9 +79,6 @@ const openCreate = async () => {
 const resetForm = () => {
   form.applyReason = "";
   form.evidenceText = "";
-  form.localEmploySocial = true;
-  form.localActivity90d = true;
-  form.judgeVersion = "v1";
   uploadFiles.value = [];
 };
 
@@ -151,10 +145,7 @@ const submit = async () => {
     const { data: applicationId } = await createJudgeApplicationApi({
       residentId: authStore.userInfo?.residentId,
       applyReason: form.applyReason,
-      evidenceText: form.evidenceText || undefined,
-      localEmploySocial: form.localEmploySocial,
-      localActivity90d: form.localActivity90d,
-      judgeVersion: form.judgeVersion || undefined
+      evidenceText: form.evidenceText || undefined
     });
     const files = uploadFiles.value
       .map((item) => item.raw)
@@ -258,15 +249,6 @@ onMounted(async () => {
       </el-form-item>
       <el-form-item label="补充说明">
         <el-input v-model="form.evidenceText" type="textarea" :rows="3" maxlength="1000" show-word-limit />
-      </el-form-item>
-      <el-form-item label="本地就业/社保/学籍">
-        <el-switch v-model="form.localEmploySocial" />
-      </el-form-item>
-      <el-form-item label="近90天本地活动">
-        <el-switch v-model="form.localActivity90d" />
-      </el-form-item>
-      <el-form-item label="规则版本">
-        <el-input v-model="form.judgeVersion" />
       </el-form-item>
       <el-form-item label="添加附件">
         <el-upload

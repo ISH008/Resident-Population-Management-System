@@ -144,9 +144,6 @@ public class ResidentJudgeApplicationService {
 
         if ("AUTO".equals(approveMode)) {
             JudgeRequest judgeRequest = new JudgeRequest();
-            judgeRequest.setLocalEmploySocial(resolveBool(request.getLocalEmploySocial(), application.getLocalEmploySocial()));
-            judgeRequest.setLocalActivity90d(resolveBool(request.getLocalActivity90d(), application.getLocalActivity90d()));
-            judgeRequest.setVersion(resolveVersion(request.getJudgeVersion(), application.getJudgeVersion()));
             residentService.judge(application.getResidentId(), judgeRequest);
             if (!StringUtils.hasText(reviewComment)) {
                 reviewComment = "审核通过（自动判定）";
@@ -208,21 +205,7 @@ public class ResidentJudgeApplicationService {
         return value ? 1 : 0;
     }
 
-    private Boolean resolveBool(Boolean requestValue, Integer applicationValue) {
-        if (requestValue != null) {
-            return requestValue;
-        }
-        return applicationValue != null ? applicationValue == 1 : Boolean.FALSE;
-    }
-
     private String normalizeVersion(String version) {
-        return StringUtils.hasText(version) ? version : "v1";
-    }
-
-    private String resolveVersion(String requestVersion, String applicationVersion) {
-        if (StringUtils.hasText(requestVersion)) {
-            return requestVersion;
-        }
-        return normalizeVersion(applicationVersion);
+        return StringUtils.hasText(version) ? version : "v2";
     }
 }

@@ -1,28 +1,22 @@
 <script setup>
 const rules = [
   {
-    code: "STAY_180_DAYS",
-    name: "连续居住 >= 180 天",
-    weight: 50,
-    desc: "按居住开始日期与结束日期（或当前日期）计算连续居住天数，达到阈值记 50 分。"
+    code: "DOC_EXCLUDE",
+    name: "文档排除类规则（v2）",
+    weight: "-",
+    desc: "临时借住、调查时点后出生、现役军人、港澳台/外籍、全户外出超半年、全户死亡或常住地无法确定，判定为非常住。"
   },
   {
-    code: "VALID_PROOF",
-    name: "有有效居住证明",
-    weight: 20,
-    desc: "存在有效居住证明（如租赁合同、房产证明、居住证等）记 20 分。"
+    code: "DOC_RESIDENT_CORE",
+    name: "文档核心常住规则（v2）",
+    weight: "-",
+    desc: "人在户在、户口待定但人在本地、人在且离开户籍地超半年、户在且外出不满半年、户在境外学习工作等判定为常住。"
   },
   {
-    code: "LOCAL_EMPLOY_SOCIAL",
-    name: "本地就业/社保/学籍",
-    weight: 20,
-    desc: "申请或审核时确认有本地就业、社保或学籍证明，记 20 分。"
-  },
-  {
-    code: "LOCAL_ACTIVITY_90D",
-    name: "近 90 天本地活动记录",
-    weight: 10,
-    desc: "申请或审核时确认近 90 天有本地活动证据，记 10 分。"
+    code: "DOC_SPECIAL_INCLUDE",
+    name: "文档特殊纳入规则（v2）",
+    weight: "-",
+    desc: "调查时点后死亡、住校生且户口在家、调查时点后迁居但原居住地登记等，按常住纳入。"
   }
 ];
 </script>
@@ -51,16 +45,14 @@ const rules = [
         <el-table :data="rules" border>
           <el-table-column prop="code" label="规则编码" width="190" />
           <el-table-column prop="name" label="规则名称" min-width="180" />
-          <el-table-column prop="weight" label="分值" width="80" />
+          <el-table-column prop="weight" label="类型" width="80" />
           <el-table-column prop="desc" label="说明" min-width="260" />
         </el-table>
       </section>
 
       <section class="section">
         <h3>状态判定标准</h3>
-        <el-alert title="RESIDENT（常住人口）：总分 >= 70" type="success" :closable="false" />
-        <el-alert title="PENDING（待判定）：40 <= 总分 < 70" type="warning" :closable="false" class="mt10" />
-        <el-alert title="NON_RESIDENT（非常住人口）：总分 < 40" type="error" :closable="false" class="mt10" />
+        <el-alert title="仅保留 v2（文档规则）：按条件直接判定 RESIDENT / NON_RESIDENT，信息不足或冲突时为 PENDING。" type="success" :closable="false" />
       </section>
 
       <section class="section">

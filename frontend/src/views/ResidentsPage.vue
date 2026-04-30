@@ -78,9 +78,123 @@ const form = reactive({
 
 const judgeForm = reactive({
   id: null,
-  localEmploySocial: true,
-  localActivity90d: true,
-  version: "v1"
+  inCurrentTown: false,
+  usuallyLivesHere: false,
+  hukouInCurrentTown: false,
+  hukouPending: false,
+  leftHukouTownOverHalfYear: false,
+  outOfHukouTownLessThanHalfYear: false,
+  overseasStudyOrWork: false,
+  bornAfterSurveyTime: false,
+  diedAfterSurveyTime: false,
+  temporaryVisitorOnSurveyNight: false,
+  activeMilitary: false,
+  hkMoTwResident: false,
+  foreignResident: false,
+  fullHouseholdAwayOverHalfYear: false,
+  fullHouseholdDeceased: false,
+  unableToDetermineResidence: false,
+  studentBoarding: false,
+  hukouAtHome: false,
+  movedAfterSurveyTime: false,
+  returnedHukouTownAndLivedOverHalfYear: false,
+  occasionalReturnOnly: false,
+  rentalHouseLandlordHukouAtThisAddress: false
+});
+
+const JUDGE_STATE_CACHE_KEY = "resident_judge_form_cache_v2";
+
+const emptyJudgeState = () => ({
+  inCurrentTown: false,
+  usuallyLivesHere: false,
+  hukouInCurrentTown: false,
+  hukouPending: false,
+  leftHukouTownOverHalfYear: false,
+  outOfHukouTownLessThanHalfYear: false,
+  overseasStudyOrWork: false,
+  bornAfterSurveyTime: false,
+  diedAfterSurveyTime: false,
+  temporaryVisitorOnSurveyNight: false,
+  activeMilitary: false,
+  hkMoTwResident: false,
+  foreignResident: false,
+  fullHouseholdAwayOverHalfYear: false,
+  fullHouseholdDeceased: false,
+  unableToDetermineResidence: false,
+  studentBoarding: false,
+  hukouAtHome: false,
+  movedAfterSurveyTime: false,
+  returnedHukouTownAndLivedOverHalfYear: false,
+  occasionalReturnOnly: false,
+  rentalHouseLandlordHukouAtThisAddress: false
+});
+
+const readJudgeStateCache = () => {
+  try {
+    const raw = window.localStorage.getItem(JUDGE_STATE_CACHE_KEY);
+    if (!raw) {
+      return {};
+    }
+    const parsed = JSON.parse(raw);
+    return parsed && typeof parsed === "object" ? parsed : {};
+  } catch (_) {
+    return {};
+  }
+};
+
+const writeJudgeStateCache = (cache) => {
+  window.localStorage.setItem(JUDGE_STATE_CACHE_KEY, JSON.stringify(cache));
+};
+
+const applyJudgeState = (state) => {
+  const source = state || emptyJudgeState();
+  judgeForm.inCurrentTown = !!source.inCurrentTown;
+  judgeForm.usuallyLivesHere = !!source.usuallyLivesHere;
+  judgeForm.hukouInCurrentTown = !!source.hukouInCurrentTown;
+  judgeForm.hukouPending = !!source.hukouPending;
+  judgeForm.leftHukouTownOverHalfYear = !!source.leftHukouTownOverHalfYear;
+  judgeForm.outOfHukouTownLessThanHalfYear = !!source.outOfHukouTownLessThanHalfYear;
+  judgeForm.overseasStudyOrWork = !!source.overseasStudyOrWork;
+  judgeForm.bornAfterSurveyTime = !!source.bornAfterSurveyTime;
+  judgeForm.diedAfterSurveyTime = !!source.diedAfterSurveyTime;
+  judgeForm.temporaryVisitorOnSurveyNight = !!source.temporaryVisitorOnSurveyNight;
+  judgeForm.activeMilitary = !!source.activeMilitary;
+  judgeForm.hkMoTwResident = !!source.hkMoTwResident;
+  judgeForm.foreignResident = !!source.foreignResident;
+  judgeForm.fullHouseholdAwayOverHalfYear = !!source.fullHouseholdAwayOverHalfYear;
+  judgeForm.fullHouseholdDeceased = !!source.fullHouseholdDeceased;
+  judgeForm.unableToDetermineResidence = !!source.unableToDetermineResidence;
+  judgeForm.studentBoarding = !!source.studentBoarding;
+  judgeForm.hukouAtHome = !!source.hukouAtHome;
+  judgeForm.movedAfterSurveyTime = !!source.movedAfterSurveyTime;
+  judgeForm.returnedHukouTownAndLivedOverHalfYear = !!source.returnedHukouTownAndLivedOverHalfYear;
+  judgeForm.occasionalReturnOnly = !!source.occasionalReturnOnly;
+  judgeForm.rentalHouseLandlordHukouAtThisAddress = !!source.rentalHouseLandlordHukouAtThisAddress;
+};
+
+const snapshotJudgeState = () => ({
+  inCurrentTown: judgeForm.inCurrentTown,
+  usuallyLivesHere: judgeForm.usuallyLivesHere,
+  hukouInCurrentTown: judgeForm.hukouInCurrentTown,
+  hukouPending: judgeForm.hukouPending,
+  leftHukouTownOverHalfYear: judgeForm.leftHukouTownOverHalfYear,
+  outOfHukouTownLessThanHalfYear: judgeForm.outOfHukouTownLessThanHalfYear,
+  overseasStudyOrWork: judgeForm.overseasStudyOrWork,
+  bornAfterSurveyTime: judgeForm.bornAfterSurveyTime,
+  diedAfterSurveyTime: judgeForm.diedAfterSurveyTime,
+  temporaryVisitorOnSurveyNight: judgeForm.temporaryVisitorOnSurveyNight,
+  activeMilitary: judgeForm.activeMilitary,
+  hkMoTwResident: judgeForm.hkMoTwResident,
+  foreignResident: judgeForm.foreignResident,
+  fullHouseholdAwayOverHalfYear: judgeForm.fullHouseholdAwayOverHalfYear,
+  fullHouseholdDeceased: judgeForm.fullHouseholdDeceased,
+  unableToDetermineResidence: judgeForm.unableToDetermineResidence,
+  studentBoarding: judgeForm.studentBoarding,
+  hukouAtHome: judgeForm.hukouAtHome,
+  movedAfterSurveyTime: judgeForm.movedAfterSurveyTime,
+  returnedHukouTownAndLivedOverHalfYear: judgeForm.returnedHukouTownAndLivedOverHalfYear,
+  occasionalReturnOnly: judgeForm.occasionalReturnOnly,
+  rentalHouseLandlordHukouAtThisAddress: judgeForm.rentalHouseLandlordHukouAtThisAddress
 });
 
 const rules = {
@@ -273,9 +387,9 @@ const handleDelete = async (row) => {
 
 const openJudge = (row) => {
   judgeForm.id = row.id;
-  judgeForm.localEmploySocial = true;
-  judgeForm.localActivity90d = true;
-  judgeForm.version = "v1";
+  const cache = readJudgeStateCache();
+  const saved = cache[String(row.id)];
+  applyJudgeState(saved || emptyJudgeState());
   judgeDialogVisible.value = true;
 };
 
@@ -283,11 +397,33 @@ const doJudge = async () => {
   judgeLoading.value = true;
   try {
     const { data } = await judgeResidentApi(judgeForm.id, {
-      localEmploySocial: judgeForm.localEmploySocial,
-      localActivity90d: judgeForm.localActivity90d,
-      version: judgeForm.version
+      inCurrentTown: judgeForm.inCurrentTown,
+      usuallyLivesHere: judgeForm.usuallyLivesHere,
+      hukouInCurrentTown: judgeForm.hukouInCurrentTown,
+      hukouPending: judgeForm.hukouPending,
+      leftHukouTownOverHalfYear: judgeForm.leftHukouTownOverHalfYear,
+      outOfHukouTownLessThanHalfYear: judgeForm.outOfHukouTownLessThanHalfYear,
+      overseasStudyOrWork: judgeForm.overseasStudyOrWork,
+      bornAfterSurveyTime: judgeForm.bornAfterSurveyTime,
+      diedAfterSurveyTime: judgeForm.diedAfterSurveyTime,
+      temporaryVisitorOnSurveyNight: judgeForm.temporaryVisitorOnSurveyNight,
+      activeMilitary: judgeForm.activeMilitary,
+      hkMoTwResident: judgeForm.hkMoTwResident,
+      foreignResident: judgeForm.foreignResident,
+      fullHouseholdAwayOverHalfYear: judgeForm.fullHouseholdAwayOverHalfYear,
+      fullHouseholdDeceased: judgeForm.fullHouseholdDeceased,
+      unableToDetermineResidence: judgeForm.unableToDetermineResidence,
+      studentBoarding: judgeForm.studentBoarding,
+      hukouAtHome: judgeForm.hukouAtHome,
+      movedAfterSurveyTime: judgeForm.movedAfterSurveyTime,
+      returnedHukouTownAndLivedOverHalfYear: judgeForm.returnedHukouTownAndLivedOverHalfYear,
+      occasionalReturnOnly: judgeForm.occasionalReturnOnly,
+      rentalHouseLandlordHukouAtThisAddress: judgeForm.rentalHouseLandlordHukouAtThisAddress
     });
-    ElMessage.success(`判定完成: ${data.finalStatus} (${data.finalScore}分)，已记录审计（${nowLabel()}）`);
+    const cache = readJudgeStateCache();
+    cache[String(judgeForm.id)] = snapshotJudgeState();
+    writeJudgeStateCache(cache);
+    ElMessage.success(`判定完成: ${data.finalStatus}，已记录审计（${nowLabel()}）`);
     judgeDialogVisible.value = false;
     await fetchData();
   } finally {
@@ -402,7 +538,6 @@ onMounted(fetchData);
       <el-table-column prop="residenceStatus" label="常住状态" width="120">
         <template #default="{ row }">{{ formatResidenceStatus(row.residenceStatus) }}</template>
       </el-table-column>
-      <el-table-column prop="residenceScore" label="评分" width="80" />
       <el-table-column label="操作" min-width="240" fixed="right">
         <template #default="{ row }">
           <el-button link type="primary" @click="openLogs(row)">判定日志</el-button>
@@ -561,16 +696,73 @@ onMounted(fetchData);
     </template>
   </el-dialog>
 
-  <el-dialog v-model="judgeDialogVisible" title="常住判定" width="420px">
-    <el-form label-width="140px">
-      <el-form-item label="本地就业/社保/学籍">
-        <el-switch v-model="judgeForm.localEmploySocial" />
+  <el-dialog v-model="judgeDialogVisible" title="常住判定" width="820px" top="6vh" class="judge-dialog">
+    <el-form label-width="160px" class="judge-form-grid">
+      <el-form-item label="调查时点在本地">
+        <el-switch v-model="judgeForm.inCurrentTown" />
       </el-form-item>
-      <el-form-item label="近90天本地活动">
-        <el-switch v-model="judgeForm.localActivity90d" />
+      <el-form-item label="经常居住在本地">
+        <el-switch v-model="judgeForm.usuallyLivesHere" />
       </el-form-item>
-      <el-form-item label="规则版本">
-        <el-input v-model="judgeForm.version" />
+      <el-form-item label="户口在本街镇">
+        <el-switch v-model="judgeForm.hukouInCurrentTown" />
+      </el-form-item>
+      <el-form-item label="户口待定">
+        <el-switch v-model="judgeForm.hukouPending" />
+      </el-form-item>
+      <el-form-item label="离开户籍地超半年">
+        <el-switch v-model="judgeForm.leftHukouTownOverHalfYear" />
+      </el-form-item>
+      <el-form-item label="外出不足半年">
+        <el-switch v-model="judgeForm.outOfHukouTownLessThanHalfYear" />
+      </el-form-item>
+      <el-form-item label="境外学习工作">
+        <el-switch v-model="judgeForm.overseasStudyOrWork" />
+      </el-form-item>
+      <el-form-item label="住校生">
+        <el-switch v-model="judgeForm.studentBoarding" />
+      </el-form-item>
+      <el-form-item label="户口在家">
+        <el-switch v-model="judgeForm.hukouAtHome" />
+      </el-form-item>
+      <el-form-item label="调查时点后出生">
+        <el-switch v-model="judgeForm.bornAfterSurveyTime" />
+      </el-form-item>
+      <el-form-item label="调查时点后死亡">
+        <el-switch v-model="judgeForm.diedAfterSurveyTime" />
+      </el-form-item>
+      <el-form-item label="调查前夜临时借住">
+        <el-switch v-model="judgeForm.temporaryVisitorOnSurveyNight" />
+      </el-form-item>
+      <el-form-item label="现役军人">
+        <el-switch v-model="judgeForm.activeMilitary" />
+      </el-form-item>
+      <el-form-item label="港澳台居民">
+        <el-switch v-model="judgeForm.hkMoTwResident" />
+      </el-form-item>
+      <el-form-item label="外籍人员">
+        <el-switch v-model="judgeForm.foreignResident" />
+      </el-form-item>
+      <el-form-item label="全户外出超半年">
+        <el-switch v-model="judgeForm.fullHouseholdAwayOverHalfYear" />
+      </el-form-item>
+      <el-form-item label="全户死亡">
+        <el-switch v-model="judgeForm.fullHouseholdDeceased" />
+      </el-form-item>
+      <el-form-item label="常住地无法确定">
+        <el-switch v-model="judgeForm.unableToDetermineResidence" />
+      </el-form-item>
+      <el-form-item label="时点后已迁居">
+        <el-switch v-model="judgeForm.movedAfterSurveyTime" />
+      </el-form-item>
+      <el-form-item label="返籍地常住超半年">
+        <el-switch v-model="judgeForm.returnedHukouTownAndLivedOverHalfYear" />
+      </el-form-item>
+      <el-form-item label="仅偶尔返乡">
+        <el-switch v-model="judgeForm.occasionalReturnOnly" />
+      </el-form-item>
+      <el-form-item label="出租房房东户口在本址">
+        <el-switch v-model="judgeForm.rentalHouseLandlordHukouAtThisAddress" />
       </el-form-item>
     </el-form>
     <template #footer>
@@ -586,12 +778,11 @@ onMounted(fetchData);
       <el-table-column prop="hitFlag" label="命中" width="80">
         <template #default="{ row }">{{ row.hitFlag === 1 ? "是" : "否" }}</template>
       </el-table-column>
-      <el-table-column prop="scoreDelta" label="分值变化" width="100" />
-      <el-table-column prop="finalScore" label="累计分" width="90" />
+      <el-table-column prop="judgeReason" label="判定依据" min-width="180" />
       <el-table-column prop="finalStatus" label="状态" width="120">
         <template #default="{ row }">{{ formatResidenceStatus(row.finalStatus) }}</template>
       </el-table-column>
-      <el-table-column prop="judgeVersion" label="版本" width="90" />
+      <el-table-column prop="judgeVersion" label="规则版本" width="100" />
       <el-table-column prop="judgeTime" label="时间" min-width="170" />
     </el-table>
   </el-dialog>
@@ -701,5 +892,16 @@ onMounted(fetchData);
   margin-bottom: 12px;
   display: flex;
   justify-content: flex-end;
+}
+
+:deep(.judge-dialog .el-dialog__body) {
+  max-height: 68vh;
+  overflow-y: auto;
+}
+
+.judge-form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  column-gap: 24px;
 }
 </style>
