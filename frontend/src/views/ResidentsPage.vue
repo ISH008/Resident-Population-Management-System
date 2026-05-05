@@ -197,6 +197,40 @@ const snapshotJudgeState = () => ({
   rentalHouseLandlordHukouAtThisAddress: judgeForm.rentalHouseLandlordHukouAtThisAddress
 });
 
+const JUDGE_RULES = [
+  { code: "排除规则", name: "排除规则", status: "NON_RESIDENT", desc: "时点后出生、临时借住、现役军人、港澳台/外籍、全户外出超半年、全户死亡、常住地无法确定。", when: (f) =>
+    f.temporaryVisitorOnSurveyNight || f.bornAfterSurveyTime || f.activeMilitary || f.hkMoTwResident || f.foreignResident || f.fullHouseholdDeceased || f.unableToDetermineResidence || f.fullHouseholdAwayOverHalfYear },
+  { code: "时点后死亡纳入", name: "时点后死亡纳入", status: "RESIDENT", desc: "调查时点后死亡，仍应计入。", when: (f) => f.diedAfterSurveyTime },
+  { code: "人在户在/经常居住", name: "人在户在/经常居住", status: "RESIDENT", desc: "户口在本街镇，且经常居住在本地（或调查时点在本地）。", when: (f) => f.hukouInCurrentTown && (f.usuallyLivesHere || f.inCurrentTown) },
+  { code: "户口待定但人在本地", name: "户口待定但人在本地", status: "RESIDENT", desc: "人在本地且户口待定。", when: (f) => f.inCurrentTown && f.hukouPending },
+  { code: "离开户籍地超半年", name: "离开户籍地超半年", status: "RESIDENT", desc: "人在本地且离开户籍地超半年。", when: (f) => f.inCurrentTown && f.leftHukouTownOverHalfYear },
+  { code: "户在外出不足半年", name: "户在外出不足半年", status: "RESIDENT", desc: "户口在本街镇且外出不足半年。", when: (f) => f.hukouInCurrentTown && f.outOfHukouTownLessThanHalfYear },
+  { code: "户在境外学习工作", name: "户在境外学习工作", status: "RESIDENT", desc: "户口在本街镇且境外学习/工作。", when: (f) => f.hukouInCurrentTown && f.overseasStudyOrWork },
+  { code: "住校生登记在家", name: "住校生登记在家", status: "RESIDENT", desc: "住校生且户口在家。", when: (f) => f.studentBoarding && f.hukouAtHome },
+  { code: "出租房房东补录", name: "出租房房东补录", status: "RESIDENT", desc: "出租房场景下房东户口仍在本址。", when: (f) => f.rentalHouseLandlordHukouAtThisAddress },
+  { code: "时点后迁居原址登记", name: "时点后迁居原址登记", status: "RESIDENT", desc: "调查时点后迁居，原居住地仍需登记。", when: (f) => f.movedAfterSurveyTime },
+  { code: "返籍常住重算", name: "返籍常住重算", status: "NON_RESIDENT", desc: "返回户籍地常住超半年，且非偶尔返乡。", when: (f) => f.returnedHukouTownAndLivedOverHalfYear && !f.occasionalReturnOnly },
+  { code: "信息不足待核实", name: "信息不足待核实", status: "PENDING", desc: "未命中明确规则，进入待判定。", when: () => true }
+];
+
+const judgePreview = computed(() => {
+  const flags = snapshotJudgeState();
+  let hit = null;
+  for (const rule of JUDGE_RULES) {
+    if (rule.when(flags)) {
+      hit = rule;
+      break;
+    }
+  }
+  const hitIndex = JUDGE_RULES.findIndex((item) => item.code === hit.code);
+  return {
+    hitRule: hit,
+    status: hit.status,
+    matched: JUDGE_RULES.slice(0, hitIndex + 1).filter((r) => r.code === hit.code),
+    skipped: JUDGE_RULES.slice(0, hitIndex).filter((r) => r.code !== hit.code)
+  };
+});
+
 const rules = {
   name: [{ required: true, message: "请输入姓名", trigger: "blur" }],
   idCard: [
@@ -696,8 +730,9 @@ onMounted(fetchData);
     </template>
   </el-dialog>
 
-  <el-dialog v-model="judgeDialogVisible" title="常住判定" width="820px" top="6vh" class="judge-dialog">
-    <el-form label-width="160px" class="judge-form-grid">
+  <el-dialog v-model="judgeDialogVisible" title="常住判定" width="1180px" top="4vh" class="judge-dialog">
+    <div class="judge-layout">
+      <el-form label-width="160px" class="judge-form-grid">
       <el-form-item label="调查时点在本地">
         <el-switch v-model="judgeForm.inCurrentTown" />
       </el-form-item>
@@ -764,7 +799,27 @@ onMounted(fetchData);
       <el-form-item label="出租房房东户口在本址">
         <el-switch v-model="judgeForm.rentalHouseLandlordHukouAtThisAddress" />
       </el-form-item>
-    </el-form>
+      </el-form>
+      <div class="judge-panel">
+        <div class="judge-panel-title">规则说明面板</div>
+        <div class="judge-panel-status">
+          当前预判：<el-tag :type="judgePreview.status === 'RESIDENT' ? 'success' : judgePreview.status === 'NON_RESIDENT' ? 'danger' : 'warning'">
+            {{ formatResidenceStatus(judgePreview.status) }}
+          </el-tag>
+        </div>
+        <div class="judge-panel-hit">
+          命中规则：{{ judgePreview.hitRule.code }} / {{ judgePreview.hitRule.name }}
+        </div>
+        <div class="judge-panel-desc">{{ judgePreview.hitRule.desc }}</div>
+        <div class="judge-panel-subtitle">规则优先级</div>
+        <div class="judge-rule-list">
+          <div v-for="(rule, idx) in JUDGE_RULES" :key="rule.code" class="judge-rule-item" :class="{ active: rule.code === judgePreview.hitRule.code }">
+            <div class="rule-head">#{{ idx + 1 }} {{ rule.code }}</div>
+            <div class="rule-body">{{ rule.name }}：{{ rule.desc }}</div>
+          </div>
+        </div>
+      </div>
+    </div>
     <template #footer>
       <el-button @click="judgeDialogVisible = false">取消</el-button>
       <el-button type="primary" :loading="judgeLoading" @click="doJudge">执行判定</el-button>
@@ -903,5 +958,77 @@ onMounted(fetchData);
   display: grid;
   grid-template-columns: 1fr 1fr;
   column-gap: 24px;
+}
+
+.judge-layout {
+  display: grid;
+  grid-template-columns: 2fr 1.2fr;
+  gap: 18px;
+}
+
+.judge-panel {
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 12px;
+  background: #fafafa;
+  max-height: 68vh;
+  overflow: auto;
+}
+
+.judge-panel-title {
+  font-weight: 600;
+  margin-bottom: 10px;
+}
+
+.judge-panel-status {
+  margin-bottom: 8px;
+}
+
+.judge-panel-hit {
+  font-size: 13px;
+  color: #374151;
+  margin-bottom: 6px;
+}
+
+.judge-panel-desc {
+  font-size: 13px;
+  color: #4b5563;
+  margin-bottom: 12px;
+}
+
+.judge-panel-subtitle {
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+
+.judge-rule-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.judge-rule-item {
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  padding: 8px;
+  background: #fff;
+}
+
+.judge-rule-item.active {
+  border-color: #3b82f6;
+  background: #eff6ff;
+}
+
+.rule-head {
+  font-size: 12px;
+  color: #111827;
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+.rule-body {
+  font-size: 12px;
+  color: #4b5563;
+  line-height: 1.5;
 }
 </style>
