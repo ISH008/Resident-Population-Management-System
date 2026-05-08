@@ -1,4 +1,4 @@
-﻿-- Resident Management System V1
+﻿-- Resident Management System
 -- MySQL 8.0+
 -- Charset: utf8mb4
 
@@ -57,7 +57,6 @@ CREATE TABLE sys_user_role (
 -- 2) Resident core
 -- =============================
 DROP TABLE IF EXISTS resident_judge_log;
-DROP TABLE IF EXISTS resident_judge_rule;
 DROP TABLE IF EXISTS resident_judge_application_attachment;
 DROP TABLE IF EXISTS resident_judge_application;
 DROP TABLE IF EXISTS resident_mobility_log;
@@ -104,23 +103,7 @@ CREATE TABLE resident (
   KEY idx_resident_stay_start (stay_start_date),
   KEY idx_resident_created_at (created_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='Resident archive';
-
-CREATE TABLE resident_judge_rule (
-  id BIGINT PRIMARY KEY AUTO_INCREMENT,
-  rule_code VARCHAR(64) NOT NULL COMMENT 'STAY_180_DAYS/VALID_PROOF/LOCAL_ACTIVITY_90D etc',
-  rule_name VARCHAR(128) NOT NULL,
-  weight INT NOT NULL DEFAULT 0,
-  threshold_value VARCHAR(64) NULL COMMENT 'e.g. 180 days',
-  enabled TINYINT NOT NULL DEFAULT 1,
-  sort_order INT NOT NULL DEFAULT 0,
-  version VARCHAR(32) NOT NULL DEFAULT 'v1',
-  description VARCHAR(500) NULL,
-  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  UNIQUE KEY uk_rule_code_version (rule_code, version),
-  KEY idx_rule_enabled (enabled)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='Residence judgement rules';
-
+`r`n
 CREATE TABLE resident_judge_log (
   id BIGINT PRIMARY KEY AUTO_INCREMENT,
   resident_id BIGINT NOT NULL,
@@ -131,7 +114,7 @@ CREATE TABLE resident_judge_log (
   final_score INT NOT NULL DEFAULT 0,
   final_status VARCHAR(32) NOT NULL COMMENT 'RESIDENT/NON_RESIDENT/PENDING',
   judge_reason VARCHAR(500) NULL,
-  judge_version VARCHAR(32) NOT NULL DEFAULT 'v1',
+  judge_version VARCHAR(32) NOT NULL DEFAULT 'v2',
   judge_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   operator_id BIGINT NULL COMMENT 'null means system job',
   KEY idx_rjl_resident_id (resident_id),
@@ -151,7 +134,7 @@ CREATE TABLE resident_judge_application (
   evidence_text VARCHAR(1000) NULL,
   local_employ_social TINYINT NULL COMMENT '1-yes,0-no,null-unknown',
   local_activity_90d TINYINT NULL COMMENT '1-yes,0-no,null-unknown',
-  judge_version VARCHAR(32) NOT NULL DEFAULT 'v1',
+  judge_version VARCHAR(32) NOT NULL DEFAULT 'v2',
   status VARCHAR(32) NOT NULL DEFAULT 'PENDING' COMMENT 'PENDING/APPROVED/REJECTED',
   review_comment VARCHAR(500) NULL,
   reviewer_id BIGINT NULL,
@@ -237,20 +220,6 @@ FROM sys_user u
 JOIN sys_role r ON r.role_code = 'ADMIN'
 WHERE u.username = 'admin'
 ON DUPLICATE KEY UPDATE user_id = VALUES(user_id), role_id = VALUES(role_id);
-
--- v1 judgement rules
-INSERT INTO resident_judge_rule (rule_code, rule_name, weight, threshold_value, enabled, sort_order, version, description)
-VALUES
-  ('STAY_180_DAYS', '连续居住>=180天', 50, '180', 1, 1, 'v1', 'stay_end_date - stay_start_date >= 180'),
-  ('VALID_PROOF', '有有效居住证明', 20, '1', 1, 2, 'v1', 'proof_type not null'),
-  ('LOCAL_EMPLOY_SOCIAL', '有本地就业/社保/学籍证明', 20, '1', 1, 3, 'v1', '外部证明项，后端布尔入参'),
-  ('LOCAL_ACTIVITY_90D', '近90天有本地活动记录', 10, '1', 1, 4, 'v1', '外部行为证据项')
-ON DUPLICATE KEY UPDATE
-  rule_name = VALUES(rule_name),
-  weight = VALUES(weight),
-  threshold_value = VALUES(threshold_value),
-  enabled = VALUES(enabled),
-  sort_order = VALUES(sort_order),
-  description = VALUES(description);
-
+`r`n
 SET FOREIGN_KEY_CHECKS = 1;
+

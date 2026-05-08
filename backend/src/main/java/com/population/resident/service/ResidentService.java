@@ -3,7 +3,6 @@ package com.population.resident.service;
 import com.population.resident.common.ErrorCode;
 import com.population.resident.domain.Resident;
 import com.population.resident.domain.ResidentJudgeLog;
-import com.population.resident.domain.ResidentJudgeRule;
 import com.population.resident.dto.JudgeRequest;
 import com.population.resident.dto.JudgeResultResponse;
 import com.population.resident.dto.ManualJudgeRequest;
@@ -163,7 +162,7 @@ public class ResidentService {
         for (String ruleCode : hitRules) {
             residentJudgeLogMapper.insert(buildLog(
                     resident.getId(),
-                    buildVirtualRule(ruleCode),
+                    ruleCode,
                     true,
                     0,
                     finalScore,
@@ -254,19 +253,12 @@ public class ResidentService {
         resident.setProofType(request.getProofType());
     }
 
-    private ResidentJudgeRule buildVirtualRule(String ruleCode) {
-        ResidentJudgeRule rule = new ResidentJudgeRule();
-        rule.setId(null);
-        rule.setRuleCode(ruleCode);
-        return rule;
-    }
-
     private boolean isTrue(Boolean value) {
         return Boolean.TRUE.equals(value);
     }
 
     private ResidentJudgeLog buildLog(Long residentId,
-                                      ResidentJudgeRule rule,
+                                      String ruleCode,
                                       boolean hit,
                                       int delta,
                                       int finalScore,
@@ -276,8 +268,8 @@ public class ResidentService {
                                       Long operatorId) {
         ResidentJudgeLog log = new ResidentJudgeLog();
         log.setResidentId(residentId);
-        log.setRuleId(rule.getId());
-        log.setRuleCode(rule.getRuleCode());
+        log.setRuleId(null);
+        log.setRuleCode(ruleCode);
         log.setHitFlag(hit ? 1 : 0);
         log.setScoreDelta(delta);
         log.setFinalScore(finalScore);

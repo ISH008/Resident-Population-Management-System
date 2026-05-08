@@ -1,7 +1,7 @@
 ﻿# Resident Management Backend
 
 ## Run
-1. Ensure MySQL has executed `../db/init_v1.sql`.
+1. Ensure MySQL has executed `../db/init.sql`.
 2. Set profile and env vars.
 3. Start:
    - Dev: `mvn spring-boot:run -Dspring-boot.run.profiles=dev`

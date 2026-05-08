@@ -814,7 +814,7 @@ onMounted(fetchData);
         <div class="judge-panel-subtitle">规则优先级</div>
         <div class="judge-rule-list">
           <div v-for="(rule, idx) in JUDGE_RULES" :key="rule.code" class="judge-rule-item" :class="{ active: rule.code === judgePreview.hitRule.code }">
-            <div class="rule-head">#{{ idx + 1 }} {{ rule.code }}</div>
+            <div class="rule-head">{{ idx + 1 }}.{{ rule.code }}</div>
             <div class="rule-body">{{ rule.name }}：{{ rule.desc }}</div>
           </div>
         </div>

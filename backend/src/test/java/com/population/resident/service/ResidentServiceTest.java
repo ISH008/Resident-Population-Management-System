@@ -2,13 +2,12 @@ package com.population.resident.service;
 
 import com.population.resident.common.ErrorCode;
 import com.population.resident.domain.Resident;
-import com.population.resident.domain.ResidentJudgeRule;
 import com.population.resident.dto.JudgeRequest;
+import com.population.resident.dto.JudgeResultResponse;
 import com.population.resident.dto.PageResponse;
 import com.population.resident.dto.ResidentUpsertRequest;
 import com.population.resident.exception.BizException;
 import com.population.resident.mapper.ResidentJudgeLogMapper;
-import com.population.resident.mapper.ResidentJudgeRuleMapper;
 import com.population.resident.mapper.ResidentMapper;
 import com.population.resident.security.CurrentUser;
 import com.population.resident.security.UserContext;
@@ -37,8 +36,6 @@ class ResidentServiceTest {
 
     @Mock
     private ResidentMapper residentMapper;
-    @Mock
-    private ResidentJudgeRuleMapper residentJudgeRuleMapper;
     @Mock
     private ResidentJudgeLogMapper residentJudgeLogMapper;
 
@@ -76,7 +73,7 @@ class ResidentServiceTest {
     }
 
     @Test
-    void judge_shouldFailWhenNoEnabledRule() {
+    void judge_shouldReturnNonResidentWhenExcludeRuleHit() {
         UserContext.set(CurrentUser.builder()
                 .userId(1L)
                 .username("admin")
@@ -86,16 +83,20 @@ class ResidentServiceTest {
 
         Resident resident = new Resident();
         resident.setId(1L);
-        resident.setStayStartDate(LocalDate.now().minusDays(190));
         when(residentMapper.findById(1L)).thenReturn(resident);
-        when(residentJudgeRuleMapper.findEnabledRules("v1")).thenReturn(List.of());
+        when(residentMapper.updateJudgeResult(eq(1L), eq("NON_RESIDENT"), eq(0), eq("v2"), anyString(), eq(1L))).thenReturn(1);
 
-        BizException ex = assertThrows(BizException.class, () -> residentService.judge(1L, new JudgeRequest()));
-        assertEquals(ErrorCode.BAD_REQUEST.getCode(), ex.getCode());
+        JudgeRequest request = new JudgeRequest();
+        request.setTemporaryVisitorOnSurveyNight(true);
+
+        JudgeResultResponse result = residentService.judge(1L, request);
+        assertEquals("NON_RESIDENT", result.getFinalStatus());
+        assertEquals("v2", result.getJudgeVersion());
+        verify(residentJudgeLogMapper).insert(any());
     }
 
     @Test
-    void judge_shouldPersistFinalJudgeResult() {
+    void judge_shouldReturnPendingWhenNoRuleMatched() {
         UserContext.set(CurrentUser.builder()
                 .userId(1L)
                 .username("admin")
@@ -105,22 +106,13 @@ class ResidentServiceTest {
 
         Resident resident = new Resident();
         resident.setId(1L);
-        resident.setStayStartDate(LocalDate.now().minusDays(200));
-        resident.setProofType("RENT_CONTRACT");
         when(residentMapper.findById(1L)).thenReturn(resident);
-        ResidentJudgeRule stayRule = new ResidentJudgeRule();
-        stayRule.setId(1L);
-        stayRule.setRuleCode("STAY_180_DAYS");
-        stayRule.setWeight(50);
-        stayRule.setThresholdValue("180");
-        when(residentJudgeRuleMapper.findEnabledRules("v1")).thenReturn(List.of(stayRule));
-        when(residentMapper.updateJudgeResult(eq(1L), eq("PENDING"), eq(50), eq("v1"), anyString(), eq(1L)))
-                .thenReturn(1);
+        when(residentMapper.updateJudgeResult(eq(1L), eq("PENDING"), eq(0), eq("v2"), anyString(), eq(1L))).thenReturn(1);
 
         var result = residentService.judge(1L, new JudgeRequest());
 
         assertEquals("PENDING", result.getFinalStatus());
-        assertEquals(50, result.getFinalScore());
+        assertEquals(0, result.getFinalScore());
         verify(residentJudgeLogMapper).insert(any());
     }
 }

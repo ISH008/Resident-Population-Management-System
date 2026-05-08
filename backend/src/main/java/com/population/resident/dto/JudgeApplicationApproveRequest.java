@@ -8,7 +8,7 @@ import lombok.Data;
 @Data
 public class JudgeApplicationApproveRequest {
     @NotBlank(message = "approveMode不能为空")
-    @Pattern(regexp = "^(AUTO|MANUAL)$", message = "approveMode取值错误")
+    @Pattern(regexp = "^MANUAL$", message = "approveMode仅支持MANUAL")
     private String approveMode;
 
     private Boolean localEmploySocial;

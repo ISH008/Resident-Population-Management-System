@@ -30,7 +30,7 @@ const query = reactive({
 });
 
 const approveForm = reactive({
-  approveMode: "AUTO",
+  approveMode: "MANUAL",
   manualStatus: "PENDING",
   manualReason: "",
   reviewComment: ""
@@ -111,7 +111,7 @@ const tableRowClassName = ({ row }) => {
 
 const openApprove = (row) => {
   currentRow.value = row;
-  approveForm.approveMode = "AUTO";
+  approveForm.approveMode = "MANUAL";
   approveForm.manualStatus = "PENDING";
   approveForm.manualReason = "";
   approveForm.reviewComment = "";
@@ -122,7 +122,7 @@ const submitApprove = async () => {
   if (!currentRow.value) {
     return;
   }
-  if (approveForm.approveMode === "MANUAL" && !approveForm.manualStatus) {
+  if (!approveForm.manualStatus) {
     ElMessage.error("请选择人工判定状态");
     return;
   }
@@ -130,11 +130,11 @@ const submitApprove = async () => {
   try {
     await approveJudgeApplicationApi(currentRow.value.id, {
       approveMode: approveForm.approveMode,
-      manualStatus: approveForm.approveMode === "MANUAL" ? approveForm.manualStatus : undefined,
-      manualReason: approveForm.approveMode === "MANUAL" ? approveForm.manualReason || undefined : undefined,
+      manualStatus: approveForm.manualStatus,
+      manualReason: approveForm.manualReason || undefined,
       reviewComment: approveForm.reviewComment || undefined
     });
-    ElMessage.success("审批通过并已执行判定");
+    ElMessage.success("审批通过并已完成人工覆核");
     approveDialogVisible.value = false;
     await fetchData();
   } finally {
@@ -272,7 +272,7 @@ onMounted(fetchData);
       <el-table-column label="操作" width="180" fixed="right">
         <template #default="{ row }">
           <template v-if="row.status === 'PENDING'">
-            <el-button link type="primary" @click="openApprove(row)">通过并判定</el-button>
+            <el-button link type="primary" @click="openApprove(row)">判定</el-button>
             <el-button link type="danger" @click="openReject(row)">驳回</el-button>
           </template>
           <span v-else>-</span>
@@ -298,27 +298,18 @@ onMounted(fetchData);
     </div>
   </el-card>
 
-  <el-dialog v-model="approveDialogVisible" title="通过并执行判定" width="520px">
+  <el-dialog v-model="approveDialogVisible" title="人工覆核" width="520px">
     <el-form label-width="130px">
-      <el-form-item label="审批方式">
-        <el-radio-group v-model="approveForm.approveMode">
-          <el-radio value="AUTO">自动判定</el-radio>
-          <el-radio value="MANUAL">人工覆核</el-radio>
-        </el-radio-group>
+      <el-form-item label="判定状态">
+        <el-select v-model="approveForm.manualStatus">
+          <el-option label="常住人口" value="RESIDENT" />
+          <el-option label="待判定" value="PENDING" />
+          <el-option label="非常住人口" value="NON_RESIDENT" />
+        </el-select>
       </el-form-item>
-
-      <template v-if="approveForm.approveMode === 'MANUAL'">
-        <el-form-item label="人工判定状态">
-          <el-select v-model="approveForm.manualStatus">
-            <el-option label="常住人口" value="RESIDENT" />
-            <el-option label="待判定" value="PENDING" />
-            <el-option label="非常住人口" value="NON_RESIDENT" />
-          </el-select>
-        </el-form-item>
-        <el-form-item label="人工判定理由">
-          <el-input v-model="approveForm.manualReason" type="textarea" :rows="2" maxlength="500" show-word-limit />
-        </el-form-item>
-      </template>
+      <el-form-item label="判定理由">
+        <el-input v-model="approveForm.manualReason" type="textarea" :rows="2" maxlength="500" show-word-limit />
+      </el-form-item>
 
       <el-form-item label="审核备注">
         <el-input v-model="approveForm.reviewComment" type="textarea" :rows="2" maxlength="500" show-word-limit />

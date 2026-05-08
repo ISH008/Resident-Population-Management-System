@@ -7,7 +7,6 @@ import com.population.resident.domain.SysUser;
 import com.population.resident.dto.JudgeApplicationApproveRequest;
 import com.population.resident.dto.JudgeApplicationCreateRequest;
 import com.population.resident.dto.JudgeApplicationRejectRequest;
-import com.population.resident.dto.JudgeRequest;
 import com.population.resident.dto.ManualJudgeRequest;
 import com.population.resident.dto.PageResponse;
 import com.population.resident.exception.BizException;
@@ -21,7 +20,6 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 import java.util.List;
-import java.util.Locale;
 
 @Service
 @RequiredArgsConstructor
@@ -139,31 +137,19 @@ public class ResidentJudgeApplicationService {
             throw new BizException(ErrorCode.CONFLICT.getCode(), "申请已处理");
         }
         CurrentUser reviewer = permissionService.requireCurrentUser();
-        String approveMode = request.getApproveMode().toUpperCase(Locale.ROOT);
         String reviewComment = request.getReviewComment();
-
-        if ("AUTO".equals(approveMode)) {
-            JudgeRequest judgeRequest = new JudgeRequest();
-            residentService.judge(application.getResidentId(), judgeRequest);
-            if (!StringUtils.hasText(reviewComment)) {
-                reviewComment = "审核通过（自动判定）";
-            }
-        } else if ("MANUAL".equals(approveMode)) {
-            if (!StringUtils.hasText(request.getManualStatus())) {
-                throw new BizException(ErrorCode.BAD_REQUEST.getCode(), "manualStatus不能为空");
-            }
-            String manualReason = StringUtils.hasText(request.getManualReason())
-                    ? request.getManualReason()
-                    : "申请审核通过，管理员人工覆核";
-            ManualJudgeRequest manualJudgeRequest = new ManualJudgeRequest();
-            manualJudgeRequest.setResidenceStatus(request.getManualStatus());
-            manualJudgeRequest.setJudgeReason(manualReason);
-            residentService.manualJudge(application.getResidentId(), manualJudgeRequest);
-            if (!StringUtils.hasText(reviewComment)) {
-                reviewComment = "审核通过（人工覆核）";
-            }
-        } else {
-            throw new BizException(ErrorCode.BAD_REQUEST.getCode(), "approveMode取值错误");
+        if (!StringUtils.hasText(request.getManualStatus())) {
+            throw new BizException(ErrorCode.BAD_REQUEST.getCode(), "manualStatus不能为空");
+        }
+        String manualReason = StringUtils.hasText(request.getManualReason())
+                ? request.getManualReason()
+                : "申请审核通过，管理员人工覆核";
+        ManualJudgeRequest manualJudgeRequest = new ManualJudgeRequest();
+        manualJudgeRequest.setResidenceStatus(request.getManualStatus());
+        manualJudgeRequest.setJudgeReason(manualReason);
+        residentService.manualJudge(application.getResidentId(), manualJudgeRequest);
+        if (!StringUtils.hasText(reviewComment)) {
+            reviewComment = "审核通过（人工覆核）";
         }
 
         int updated = residentJudgeApplicationMapper.updateReviewed(
