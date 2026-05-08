@@ -58,14 +58,11 @@ onMounted(fetchData);
       <el-table-column prop="module" label="模块" width="130" />
       <el-table-column prop="action" label="动作" min-width="160" />
       <el-table-column prop="targetId" label="目标ID" width="110" />
-      <el-table-column prop="requestMethod" label="方法" width="90" />
-      <el-table-column prop="requestPath" label="路径" min-width="180" />
       <el-table-column prop="result" label="结果" width="100">
         <template #default="{ row }">
           <el-tag :type="row.result === 'SUCCESS' ? 'success' : 'danger'">{{ row.result }}</el-tag>
         </template>
       </el-table-column>
-      <el-table-column prop="message" label="信息" min-width="160" />
       <el-table-column prop="createdAt" label="时间" min-width="170" />
     </el-table>
 

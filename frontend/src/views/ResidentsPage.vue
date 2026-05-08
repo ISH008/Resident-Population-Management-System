@@ -20,6 +20,9 @@ import { REGION_OPTIONS } from "../constants/regionOptions";
 
 const authStore = useAuthStore();
 const isAdmin = computed(() => authStore.roles.includes("ADMIN"));
+const needMigrationDetail = computed(
+  () => judgeForm.leftHukouTownOverHalfYear || judgeForm.outOfHukouTownLessThanHalfYear
+);
 
 const loading = ref(false);
 const submitLoading = ref(false);
@@ -80,10 +83,17 @@ const judgeForm = reactive({
   id: null,
   inCurrentTown: false,
   usuallyLivesHere: false,
+  temporarilyAwayFromHousehold: false,
+  temporaryAwayReason: "",
   hukouInCurrentTown: false,
   hukouPending: false,
+  hukouPendingProofType: "",
   leftHukouTownOverHalfYear: false,
   outOfHukouTownLessThanHalfYear: false,
+  leftHukouTownDate: "",
+  migrationFromRegion: "",
+  migrationToRegion: "",
+  syncToMobilityLog: false,
   overseasStudyOrWork: false,
   bornAfterSurveyTime: false,
   diedAfterSurveyTime: false,
@@ -95,7 +105,6 @@ const judgeForm = reactive({
   fullHouseholdDeceased: false,
   unableToDetermineResidence: false,
   studentBoarding: false,
-  hukouAtHome: false,
   movedAfterSurveyTime: false,
   returnedHukouTownAndLivedOverHalfYear: false,
   occasionalReturnOnly: false,
@@ -107,10 +116,17 @@ const JUDGE_STATE_CACHE_KEY = "resident_judge_form_cache_v2";
 const emptyJudgeState = () => ({
   inCurrentTown: false,
   usuallyLivesHere: false,
+  temporarilyAwayFromHousehold: false,
+  temporaryAwayReason: "",
   hukouInCurrentTown: false,
   hukouPending: false,
+  hukouPendingProofType: "",
   leftHukouTownOverHalfYear: false,
   outOfHukouTownLessThanHalfYear: false,
+  leftHukouTownDate: "",
+  migrationFromRegion: "",
+  migrationToRegion: "",
+  syncToMobilityLog: false,
   overseasStudyOrWork: false,
   bornAfterSurveyTime: false,
   diedAfterSurveyTime: false,
@@ -122,7 +138,6 @@ const emptyJudgeState = () => ({
   fullHouseholdDeceased: false,
   unableToDetermineResidence: false,
   studentBoarding: false,
-  hukouAtHome: false,
   movedAfterSurveyTime: false,
   returnedHukouTownAndLivedOverHalfYear: false,
   occasionalReturnOnly: false,
@@ -150,10 +165,17 @@ const applyJudgeState = (state) => {
   const source = state || emptyJudgeState();
   judgeForm.inCurrentTown = !!source.inCurrentTown;
   judgeForm.usuallyLivesHere = !!source.usuallyLivesHere;
+  judgeForm.temporarilyAwayFromHousehold = !!source.temporarilyAwayFromHousehold;
+  judgeForm.temporaryAwayReason = source.temporaryAwayReason || "";
   judgeForm.hukouInCurrentTown = !!source.hukouInCurrentTown;
   judgeForm.hukouPending = !!source.hukouPending;
+  judgeForm.hukouPendingProofType = source.hukouPendingProofType || "";
   judgeForm.leftHukouTownOverHalfYear = !!source.leftHukouTownOverHalfYear;
   judgeForm.outOfHukouTownLessThanHalfYear = !!source.outOfHukouTownLessThanHalfYear;
+  judgeForm.leftHukouTownDate = source.leftHukouTownDate || "";
+  judgeForm.migrationFromRegion = source.migrationFromRegion || "";
+  judgeForm.migrationToRegion = source.migrationToRegion || "";
+  judgeForm.syncToMobilityLog = !!source.syncToMobilityLog;
   judgeForm.overseasStudyOrWork = !!source.overseasStudyOrWork;
   judgeForm.bornAfterSurveyTime = !!source.bornAfterSurveyTime;
   judgeForm.diedAfterSurveyTime = !!source.diedAfterSurveyTime;
@@ -165,7 +187,6 @@ const applyJudgeState = (state) => {
   judgeForm.fullHouseholdDeceased = !!source.fullHouseholdDeceased;
   judgeForm.unableToDetermineResidence = !!source.unableToDetermineResidence;
   judgeForm.studentBoarding = !!source.studentBoarding;
-  judgeForm.hukouAtHome = !!source.hukouAtHome;
   judgeForm.movedAfterSurveyTime = !!source.movedAfterSurveyTime;
   judgeForm.returnedHukouTownAndLivedOverHalfYear = !!source.returnedHukouTownAndLivedOverHalfYear;
   judgeForm.occasionalReturnOnly = !!source.occasionalReturnOnly;
@@ -175,10 +196,17 @@ const applyJudgeState = (state) => {
 const snapshotJudgeState = () => ({
   inCurrentTown: judgeForm.inCurrentTown,
   usuallyLivesHere: judgeForm.usuallyLivesHere,
+  temporarilyAwayFromHousehold: judgeForm.temporarilyAwayFromHousehold,
+  temporaryAwayReason: judgeForm.temporaryAwayReason,
   hukouInCurrentTown: judgeForm.hukouInCurrentTown,
   hukouPending: judgeForm.hukouPending,
+  hukouPendingProofType: judgeForm.hukouPendingProofType,
   leftHukouTownOverHalfYear: judgeForm.leftHukouTownOverHalfYear,
   outOfHukouTownLessThanHalfYear: judgeForm.outOfHukouTownLessThanHalfYear,
+  leftHukouTownDate: judgeForm.leftHukouTownDate,
+  migrationFromRegion: judgeForm.migrationFromRegion,
+  migrationToRegion: judgeForm.migrationToRegion,
+  syncToMobilityLog: judgeForm.syncToMobilityLog,
   overseasStudyOrWork: judgeForm.overseasStudyOrWork,
   bornAfterSurveyTime: judgeForm.bornAfterSurveyTime,
   diedAfterSurveyTime: judgeForm.diedAfterSurveyTime,
@@ -190,7 +218,6 @@ const snapshotJudgeState = () => ({
   fullHouseholdDeceased: judgeForm.fullHouseholdDeceased,
   unableToDetermineResidence: judgeForm.unableToDetermineResidence,
   studentBoarding: judgeForm.studentBoarding,
-  hukouAtHome: judgeForm.hukouAtHome,
   movedAfterSurveyTime: judgeForm.movedAfterSurveyTime,
   returnedHukouTownAndLivedOverHalfYear: judgeForm.returnedHukouTownAndLivedOverHalfYear,
   occasionalReturnOnly: judgeForm.occasionalReturnOnly,
@@ -201,12 +228,29 @@ const JUDGE_RULES = [
   { code: "排除规则", name: "排除规则", status: "NON_RESIDENT", desc: "时点后出生、临时借住、现役军人、港澳台/外籍、全户外出超半年、全户死亡、常住地无法确定。", when: (f) =>
     f.temporaryVisitorOnSurveyNight || f.bornAfterSurveyTime || f.activeMilitary || f.hkMoTwResident || f.foreignResident || f.fullHouseholdDeceased || f.unableToDetermineResidence || f.fullHouseholdAwayOverHalfYear },
   { code: "时点后死亡纳入", name: "时点后死亡纳入", status: "RESIDENT", desc: "调查时点后死亡，仍应计入。", when: (f) => f.diedAfterSurveyTime },
-  { code: "人在户在/经常居住", name: "人在户在/经常居住", status: "RESIDENT", desc: "户口在本街镇，且经常居住在本地（或调查时点在本地）。", when: (f) => f.hukouInCurrentTown && (f.usuallyLivesHere || f.inCurrentTown) },
-  { code: "户口待定但人在本地", name: "户口待定但人在本地", status: "RESIDENT", desc: "人在本地且户口待定。", when: (f) => f.inCurrentTown && f.hukouPending },
+  {
+    code: "人在户在/经常居住",
+    name: "人在户在/经常居住",
+    status: "RESIDENT",
+    desc: "户口在本街镇，且经常居住在本地（或调查时点在本地，或临时不在户且理由成立）。",
+    when: (f) => f.hukouInCurrentTown
+      && (f.usuallyLivesHere
+      || f.inCurrentTown
+      || (f.temporarilyAwayFromHousehold && ["BUSINESS_TRIP", "FAMILY_VISIT", "TRAVEL", "NIGHT_SHIFT", "OTHER"].includes(f.temporaryAwayReason)))
+  },
+  {
+    code: "户口待定但人在本地",
+    name: "户口待定但人在本地",
+    status: "RESIDENT",
+    desc: "人在本地且户口待定，并持有迁移证/出生证/退伍证等待定依据。",
+    when: (f) => f.inCurrentTown
+      && f.hukouPending
+      && ["MIGRATION_CERT", "BIRTH_CERT", "DISCHARGE_CERT", "OTHER"].includes(f.hukouPendingProofType)
+  },
   { code: "离开户籍地超半年", name: "离开户籍地超半年", status: "RESIDENT", desc: "人在本地且离开户籍地超半年。", when: (f) => f.inCurrentTown && f.leftHukouTownOverHalfYear },
   { code: "户在外出不足半年", name: "户在外出不足半年", status: "RESIDENT", desc: "户口在本街镇且外出不足半年。", when: (f) => f.hukouInCurrentTown && f.outOfHukouTownLessThanHalfYear },
   { code: "户在境外学习工作", name: "户在境外学习工作", status: "RESIDENT", desc: "户口在本街镇且境外学习/工作。", when: (f) => f.hukouInCurrentTown && f.overseasStudyOrWork },
-  { code: "住校生登记在家", name: "住校生登记在家", status: "RESIDENT", desc: "住校生且户口在家。", when: (f) => f.studentBoarding && f.hukouAtHome },
+  { code: "住校生登记在家", name: "住校生登记在家", status: "RESIDENT", desc: "住校生且户口在本街镇。", when: (f) => f.studentBoarding && f.hukouInCurrentTown },
   { code: "出租房房东补录", name: "出租房房东补录", status: "RESIDENT", desc: "出租房场景下房东户口仍在本址。", when: (f) => f.rentalHouseLandlordHukouAtThisAddress },
   { code: "时点后迁居原址登记", name: "时点后迁居原址登记", status: "RESIDENT", desc: "调查时点后迁居，原居住地仍需登记。", when: (f) => f.movedAfterSurveyTime },
   { code: "返籍常住重算", name: "返籍常住重算", status: "NON_RESIDENT", desc: "返回户籍地常住超半年，且非偶尔返乡。", when: (f) => f.returnedHukouTownAndLivedOverHalfYear && !f.occasionalReturnOnly },
@@ -433,10 +477,17 @@ const doJudge = async () => {
     const { data } = await judgeResidentApi(judgeForm.id, {
       inCurrentTown: judgeForm.inCurrentTown,
       usuallyLivesHere: judgeForm.usuallyLivesHere,
+      temporarilyAwayFromHousehold: judgeForm.temporarilyAwayFromHousehold,
+      temporaryAwayReason: judgeForm.temporaryAwayReason || null,
       hukouInCurrentTown: judgeForm.hukouInCurrentTown,
       hukouPending: judgeForm.hukouPending,
+      hukouPendingProofType: judgeForm.hukouPendingProofType || null,
       leftHukouTownOverHalfYear: judgeForm.leftHukouTownOverHalfYear,
       outOfHukouTownLessThanHalfYear: judgeForm.outOfHukouTownLessThanHalfYear,
+      leftHukouTownDate: judgeForm.leftHukouTownDate || null,
+      migrationFromRegion: judgeForm.migrationFromRegion || null,
+      migrationToRegion: judgeForm.migrationToRegion || null,
+      syncToMobilityLog: judgeForm.syncToMobilityLog,
       overseasStudyOrWork: judgeForm.overseasStudyOrWork,
       bornAfterSurveyTime: judgeForm.bornAfterSurveyTime,
       diedAfterSurveyTime: judgeForm.diedAfterSurveyTime,
@@ -448,7 +499,6 @@ const doJudge = async () => {
       fullHouseholdDeceased: judgeForm.fullHouseholdDeceased,
       unableToDetermineResidence: judgeForm.unableToDetermineResidence,
       studentBoarding: judgeForm.studentBoarding,
-      hukouAtHome: judgeForm.hukouAtHome,
       movedAfterSurveyTime: judgeForm.movedAfterSurveyTime,
       returnedHukouTownAndLivedOverHalfYear: judgeForm.returnedHukouTownAndLivedOverHalfYear,
       occasionalReturnOnly: judgeForm.occasionalReturnOnly,
@@ -733,32 +783,90 @@ onMounted(fetchData);
   <el-dialog v-model="judgeDialogVisible" title="常住判定" width="1180px" top="4vh" class="judge-dialog">
     <div class="judge-layout">
       <el-form label-width="160px" class="judge-form-grid">
-      <el-form-item label="调查时点在本地">
+      <el-form-item label="调查时点或近期在本地">
         <el-switch v-model="judgeForm.inCurrentTown" />
       </el-form-item>
       <el-form-item label="经常居住在本地">
         <el-switch v-model="judgeForm.usuallyLivesHere" />
       </el-form-item>
+      <el-form-item label="临时不在户">
+        <div class="inline-extra">
+          <el-switch v-model="judgeForm.temporarilyAwayFromHousehold" />
+          <el-select
+            v-model="judgeForm.temporaryAwayReason"
+            clearable
+            placeholder="临时不在户原因"
+            :disabled="!judgeForm.temporarilyAwayFromHousehold"
+            style="width: 240px"
+          >
+            <el-option label="临时出差" value="BUSINESS_TRIP" />
+            <el-option label="探亲" value="FAMILY_VISIT" />
+            <el-option label="旅游" value="TRAVEL" />
+            <el-option label="值夜班" value="NIGHT_SHIFT" />
+            <el-option label="其他" value="OTHER" />
+          </el-select>
+        </div>
+      </el-form-item>
       <el-form-item label="户口在本街镇">
         <el-switch v-model="judgeForm.hukouInCurrentTown" />
       </el-form-item>
       <el-form-item label="户口待定">
-        <el-switch v-model="judgeForm.hukouPending" />
+        <div class="inline-extra">
+          <el-switch v-model="judgeForm.hukouPending" />
+          <el-select
+            v-model="judgeForm.hukouPendingProofType"
+            clearable
+            placeholder="待定依据类型"
+            :disabled="!judgeForm.hukouPending"
+            style="width: 240px"
+          >
+            <el-option label="户口迁移证" value="MIGRATION_CERT" />
+            <el-option label="出生证" value="BIRTH_CERT" />
+            <el-option label="退伍证" value="DISCHARGE_CERT" />
+            <el-option label="其他证明" value="OTHER" />
+          </el-select>
+        </div>
       </el-form-item>
       <el-form-item label="离开户籍地超半年">
-        <el-switch v-model="judgeForm.leftHukouTownOverHalfYear" />
+        <div class="inline-extra">
+          <el-switch v-model="judgeForm.leftHukouTownOverHalfYear" />
+          <el-date-picker
+            v-model="judgeForm.leftHukouTownDate"
+            type="date"
+            value-format="YYYY-MM-DD"
+            placeholder="迁移时间"
+            :disabled="!needMigrationDetail"
+            style="width: 240px"
+          />
+        </div>
       </el-form-item>
       <el-form-item label="外出不足半年">
-        <el-switch v-model="judgeForm.outOfHukouTownLessThanHalfYear" />
+        <div class="inline-extra">
+          <el-switch v-model="judgeForm.outOfHukouTownLessThanHalfYear" />
+          <el-checkbox v-model="judgeForm.syncToMobilityLog" :disabled="!needMigrationDetail">
+            同步写入迁移记录
+          </el-checkbox>
+        </div>
+      </el-form-item>
+      <el-form-item label="迁移详情">
+        <div class="migration-extra">
+          <el-input
+            v-model="judgeForm.migrationFromRegion"
+            :disabled="!needMigrationDetail"
+            placeholder="迁出地"
+          />
+          <el-input
+            v-model="judgeForm.migrationToRegion"
+            :disabled="!needMigrationDetail"
+            placeholder="迁入地"
+          />
+        </div>
       </el-form-item>
       <el-form-item label="境外学习工作">
         <el-switch v-model="judgeForm.overseasStudyOrWork" />
       </el-form-item>
       <el-form-item label="住校生">
         <el-switch v-model="judgeForm.studentBoarding" />
-      </el-form-item>
-      <el-form-item label="户口在家">
-        <el-switch v-model="judgeForm.hukouAtHome" />
       </el-form-item>
       <el-form-item label="调查时点后出生">
         <el-switch v-model="judgeForm.bornAfterSurveyTime" />
@@ -833,11 +941,9 @@ onMounted(fetchData);
       <el-table-column prop="hitFlag" label="命中" width="80">
         <template #default="{ row }">{{ row.hitFlag === 1 ? "是" : "否" }}</template>
       </el-table-column>
-      <el-table-column prop="judgeReason" label="判定依据" min-width="180" />
       <el-table-column prop="finalStatus" label="状态" width="120">
         <template #default="{ row }">{{ formatResidenceStatus(row.finalStatus) }}</template>
       </el-table-column>
-      <el-table-column prop="judgeVersion" label="规则版本" width="100" />
       <el-table-column prop="judgeTime" label="时间" min-width="170" />
     </el-table>
   </el-dialog>
@@ -964,6 +1070,18 @@ onMounted(fetchData);
   display: grid;
   grid-template-columns: 2fr 1.2fr;
   gap: 18px;
+}
+
+.inline-extra {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.migration-extra {
+  display: flex;
+  gap: 10px;
+  width: 100%;
 }
 
 .judge-panel {

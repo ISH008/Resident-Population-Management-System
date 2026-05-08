@@ -3,6 +3,7 @@ package com.population.resident.service;
 import com.population.resident.common.ErrorCode;
 import com.population.resident.domain.Resident;
 import com.population.resident.domain.ResidentJudgeLog;
+import com.population.resident.domain.ResidentMobilityLog;
 import com.population.resident.dto.JudgeRequest;
 import com.population.resident.dto.JudgeResultResponse;
 import com.population.resident.dto.ManualJudgeRequest;
@@ -11,6 +12,7 @@ import com.population.resident.dto.ResidentUpsertRequest;
 import com.population.resident.exception.BizException;
 import com.population.resident.mapper.ResidentJudgeLogMapper;
 import com.population.resident.mapper.ResidentMapper;
+import com.population.resident.mapper.ResidentMobilityLogMapper;
 import com.population.resident.security.CurrentUser;
 import com.population.resident.security.UserContext;
 import lombok.RequiredArgsConstructor;
@@ -27,6 +29,7 @@ public class ResidentService {
 
     private final ResidentMapper residentMapper;
     private final ResidentJudgeLogMapper residentJudgeLogMapper;
+    private final ResidentMobilityLogMapper residentMobilityLogMapper;
 
     public PageResponse<Resident> pageQuery(Integer pageNum, Integer pageSize, String name, String idCard, String residenceStatus) {
         int validPageNum = pageNum == null || pageNum < 1 ? 1 : pageNum;
@@ -112,51 +115,56 @@ public class ResidentService {
                 || isTrue(request.getFullHouseholdAwayOverHalfYear())) {
             finalStatus = "NON_RESIDENT";
             finalScore = 0;
-            hitRules.add("DOC_EXCLUDE");
+            hitRules.add("1");
         } else if (isTrue(request.getDiedAfterSurveyTime())) {
             finalStatus = "RESIDENT";
             finalScore = 0;
-            hitRules.add("DOC_DEATH_AFTER_SURVEY_INCLUDED");
-        } else if (isTrue(request.getHukouInCurrentTown()) && (isTrue(request.getUsuallyLivesHere()) || isTrue(request.getInCurrentTown()))) {
+            hitRules.add("2");
+        } else if (isTrue(request.getHukouInCurrentTown())
+                && (isTrue(request.getUsuallyLivesHere())
+                || isTrue(request.getInCurrentTown())
+                || (isTrue(request.getTemporarilyAwayFromHousehold()) && hasValidTemporaryAwayReason(request.getTemporaryAwayReason())))) {
             finalStatus = "RESIDENT";
             finalScore = 0;
-            hitRules.add("DOC_HUKOU_LOCAL_AND_USUALLY_LIVES_HERE");
-        } else if (isTrue(request.getInCurrentTown()) && isTrue(request.getHukouPending())) {
+            hitRules.add("3");
+        } else if (isTrue(request.getInCurrentTown())
+                && isTrue(request.getHukouPending())
+                && hasValidHukouPendingProof(request.getHukouPendingProofType())) {
             finalStatus = "RESIDENT";
             finalScore = 0;
-            hitRules.add("DOC_HUKOU_PENDING_BUT_PRESENT");
+            hitRules.add("4");
         } else if (isTrue(request.getInCurrentTown()) && isTrue(request.getLeftHukouTownOverHalfYear())) {
             finalStatus = "RESIDENT";
             finalScore = 0;
-            hitRules.add("DOC_PRESENT_AND_LEFT_HUKOU_OVER_6M");
+            hitRules.add("5");
         } else if (isTrue(request.getHukouInCurrentTown()) && isTrue(request.getOutOfHukouTownLessThanHalfYear())) {
             finalStatus = "RESIDENT";
             finalScore = 0;
-            hitRules.add("DOC_HUKOU_LOCAL_OUTFLOW_UNDER_6M");
+            hitRules.add("6");
         } else if (isTrue(request.getHukouInCurrentTown()) && isTrue(request.getOverseasStudyOrWork())) {
             finalStatus = "RESIDENT";
             finalScore = 0;
-            hitRules.add("DOC_HUKOU_LOCAL_OVERSEAS");
-        } else if (isTrue(request.getStudentBoarding()) && isTrue(request.getHukouAtHome())) {
+            hitRules.add("7");
+        } else if (isTrue(request.getStudentBoarding()) && isTrue(request.getHukouInCurrentTown())) {
             finalStatus = "RESIDENT";
             finalScore = 0;
-            hitRules.add("DOC_BOARDING_STUDENT_HUKOU_AT_HOME");
+            hitRules.add("8");
         } else if (isTrue(request.getRentalHouseLandlordHukouAtThisAddress())) {
             finalStatus = "RESIDENT";
             finalScore = 0;
-            hitRules.add("DOC_RENTAL_LANDLORD_HUKOU_LOCAL");
+            hitRules.add("9");
         } else if (isTrue(request.getMovedAfterSurveyTime())) {
             finalStatus = "RESIDENT";
             finalScore = 0;
-            hitRules.add("DOC_MOVED_AFTER_SURVEY_ORIGINAL_PLACE_REGISTER");
+            hitRules.add("10");
         } else if (isTrue(request.getReturnedHukouTownAndLivedOverHalfYear()) && !isTrue(request.getOccasionalReturnOnly())) {
             finalStatus = "NON_RESIDENT";
             finalScore = 0;
-            hitRules.add("DOC_RETURNED_HUKOU_OVER_6M_RECOUNT");
+            hitRules.add("11");
         } else {
             finalStatus = "PENDING";
             finalScore = 0;
-            hitRules.add("DOC_NEED_MANUAL_REVIEW");
+            hitRules.add("12");
         }
 
         for (String ruleCode : hitRules) {
@@ -184,6 +192,7 @@ public class ResidentService {
         if (updated == 0) {
             throw new BizException(ErrorCode.INTERNAL_ERROR);
         }
+        syncMobilityLogIfNeeded(resident, request, currentUser.getUserId());
         return JudgeResultResponse.builder()
                 .residentId(resident.getId())
                 .finalScore(finalScore)
@@ -257,6 +266,64 @@ public class ResidentService {
         return Boolean.TRUE.equals(value);
     }
 
+    private boolean hasValidHukouPendingProof(String proofType) {
+        if (!StringUtils.hasText(proofType)) {
+            return false;
+        }
+        String normalized = proofType.trim().toUpperCase(Locale.ROOT);
+        return "MIGRATION_CERT".equals(normalized)
+                || "BIRTH_CERT".equals(normalized)
+                || "DISCHARGE_CERT".equals(normalized)
+                || "OTHER".equals(normalized);
+    }
+
+    private boolean hasValidTemporaryAwayReason(String reason) {
+        if (!StringUtils.hasText(reason)) {
+            return false;
+        }
+        String normalized = reason.trim().toUpperCase(Locale.ROOT);
+        return "BUSINESS_TRIP".equals(normalized)
+                || "FAMILY_VISIT".equals(normalized)
+                || "TRAVEL".equals(normalized)
+                || "NIGHT_SHIFT".equals(normalized)
+                || "OTHER".equals(normalized);
+    }
+
+    private void syncMobilityLogIfNeeded(Resident resident, JudgeRequest request, Long operatorId) {
+        boolean hitHalfYearRule = isTrue(request.getLeftHukouTownOverHalfYear()) || isTrue(request.getOutOfHukouTownLessThanHalfYear());
+        boolean hasMigrationDetail = request.getLeftHukouTownDate() != null
+                && StringUtils.hasText(clean(request.getMigrationFromRegion()))
+                && StringUtils.hasText(clean(request.getMigrationToRegion()));
+        boolean shouldSync = isTrue(request.getSyncToMobilityLog()) || (hitHalfYearRule && hasMigrationDetail);
+        if (!shouldSync) {
+            return;
+        }
+        if (!hitHalfYearRule) {
+            throw new BizException(ErrorCode.BAD_REQUEST.getCode(), "仅在“离开户籍地超半年”或“外出不足半年”场景支持同步迁移记录");
+        }
+        if (isTrue(request.getLeftHukouTownOverHalfYear()) && isTrue(request.getOutOfHukouTownLessThanHalfYear())) {
+            throw new BizException(ErrorCode.BAD_REQUEST.getCode(), "同步迁移记录时，不能同时勾选“离开户籍地超半年”和“外出不足半年”");
+        }
+        if (request.getLeftHukouTownDate() == null) {
+            throw new BizException(ErrorCode.BAD_REQUEST.getCode(), "同步迁移记录时，迁移时间不能为空");
+        }
+        String fromRegion = clean(request.getMigrationFromRegion());
+        String toRegion = clean(request.getMigrationToRegion());
+        if (!StringUtils.hasText(fromRegion) || !StringUtils.hasText(toRegion)) {
+            throw new BizException(ErrorCode.BAD_REQUEST.getCode(), "同步迁移记录时，迁出地和迁入地不能为空");
+        }
+        ResidentMobilityLog log = new ResidentMobilityLog();
+        log.setResidentId(resident.getId());
+        log.setChangeType(isTrue(request.getLeftHukouTownOverHalfYear()) ? "INFLOW" : "OUTFLOW");
+        log.setChangeDate(request.getLeftHukouTownDate());
+        log.setFromRegion(fromRegion);
+        log.setToRegion(toRegion);
+        log.setReason("判定页同步登记");
+        log.setRemark("来源:常住判定");
+        log.setOperatorId(operatorId);
+        residentMobilityLogMapper.insert(log);
+    }
+
     private ResidentJudgeLog buildLog(Long residentId,
                                       String ruleCode,
                                       boolean hit,
@@ -317,7 +384,7 @@ public class ResidentService {
             ResidentJudgeLog log = new ResidentJudgeLog();
             log.setResidentId(residentId);
             log.setRuleId(null);
-            log.setRuleCode("MANUAL_OVERRIDE");
+            log.setRuleCode("手动");
             log.setHitFlag(1);
             log.setScoreDelta(0);
             log.setFinalScore(0);
