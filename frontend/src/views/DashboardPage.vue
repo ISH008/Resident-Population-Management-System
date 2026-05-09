@@ -215,29 +215,17 @@ const trendRows = computed(() => {
 const riskList = computed(() => {
   const now = new Date();
   return residents.value
-    .filter((item) => item.residenceStatus === "PENDING" || Number(item.residenceScore || 0) < 40)
+    .filter((item) => item.residenceStatus === "PENDING")
     .map((item) => {
       const created = parseDate(item.createdAt);
       return {
         id: item.id,
         name: item.name,
         residenceStatus: item.residenceStatus,
-        residenceScore: Number(item.residenceScore || 0),
         pendingDays: created ? daysBetween(created, now) : 0
       };
     })
-    .sort((a, b) => {
-      if (a.residenceStatus === "PENDING" && b.residenceStatus !== "PENDING") {
-        return -1;
-      }
-      if (a.residenceStatus !== "PENDING" && b.residenceStatus === "PENDING") {
-        return 1;
-      }
-      if (b.pendingDays !== a.pendingDays) {
-        return b.pendingDays - a.pendingDays;
-      }
-      return a.residenceScore - b.residenceScore;
-    })
+    .sort((a, b) => b.pendingDays - a.pendingDays)
     .slice(0, 10);
 });
 
@@ -349,7 +337,7 @@ onMounted(refresh);
 
     <el-card class="mt16">
       <template #header>
-        <div class="section-title">风险名单（长期待判定 / 低分）</div>
+        <div class="section-title">待判定人群</div>
       </template>
       <el-table :data="riskList" border>
         <el-table-column prop="id" label="ID" width="80" />
@@ -357,7 +345,6 @@ onMounted(refresh);
         <el-table-column prop="residenceStatus" label="状态" width="140">
           <template #default="{ row }">{{ formatResidenceStatus(row.residenceStatus) }}</template>
         </el-table-column>
-        <el-table-column prop="residenceScore" label="评分" width="100" />
         <el-table-column prop="pendingDays" label="待判定天数" width="140" />
       </el-table>
     </el-card>

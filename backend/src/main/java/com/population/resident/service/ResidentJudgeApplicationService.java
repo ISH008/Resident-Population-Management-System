@@ -149,7 +149,7 @@ public class ResidentJudgeApplicationService {
         manualJudgeRequest.setJudgeReason(manualReason);
         residentService.manualJudge(application.getResidentId(), manualJudgeRequest);
         if (!StringUtils.hasText(reviewComment)) {
-            reviewComment = "审核通过（人工覆核）";
+            reviewComment = "审核通过";
         }
 
         int updated = residentJudgeApplicationMapper.updateReviewed(
